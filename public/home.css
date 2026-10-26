@@ -104,3 +104,5 @@
 .jc .jc-card .nm .fu{display:inline-block;vertical-align:3px;margin-left:6px;font-size:11px;font-weight:800;color:#1b4fe0;background:#eef3ff;border-radius:6px;padding:2px 7px;letter-spacing:0}
 .jc .jc-card .nm .fu.ev{color:#047857;background:#ecfdf5}
 .jc .jc-card .nm .fu.lpg{color:#9a3412;background:#fff7ed}
+/* 차량 카드 하단 개월수 목록 숨김 (연료만 표시) */
+.jc .jc-card .ft span:last-child:not(:first-child){display:none}
