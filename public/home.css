@@ -190,7 +190,7 @@
 .jc .jc-hero .fb{position:absolute;z-index:3;display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 14px 30px rgba(17,24,39,.14);font-size:13px;font-weight:800;color:#111827;white-space:nowrap;animation:jhFloat 4.5s ease-in-out infinite}
 .jc .jc-hero .fb i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;font-style:normal;font-size:15px;background:#eef3ff}
 .jc .jc-hero .fb small{display:block;font-size:11px;font-weight:600;color:#6b7280}
-.jc .jc-hero .fb.a{left:-34px;top:22%}
+.jc .jc-hero .fb.a{left:-34px;top:47%}
 .jc .jc-hero .fb.b{right:-22px;top:-18px;animation-delay:-2.2s}
 .jc .jc-hero .fb.b i{background:#ecfdf5}
 @keyframes jhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
