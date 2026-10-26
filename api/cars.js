@@ -42,9 +42,12 @@ function parse(p) {
 async function fetchAll() {
   const all = [];
   for (let page = 1; page <= 8; page++) {
-    const r = await fetch(SITE + LIST + page, { headers: { 'x-requested-with': 'XMLHttpRequest', 'user-agent': 'Mozilla/5.0 jetcar-api' } });
-    if (!r.ok) throw new Error('imweb ' + r.status);
-    const j = await r.json();
+    const r = await fetch(SITE + LIST + page, { headers: {
+      'x-requested-with': 'XMLHttpRequest', 'accept': 'application/json, text/javascript, */*; q=0.01',
+      'accept-language': 'ko-KR,ko;q=0.9', 'referer': SITE + '/allcar',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' } });
+    const txt = await r.text();
+    let j; try { j = JSON.parse(txt); } catch (e) { throw new Error('imweb ' + r.status + ' non-json: ' + txt.slice(0, 200).replace(/\s+/g, ' ')); }
     const html = j.html || '';
     const re = /data-product-properties=['"]([^'"]+)['"]/g; let m, cnt = 0;
     while ((m = re.exec(html))) {
