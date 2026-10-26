@@ -28,7 +28,7 @@
   /* 차량 찾기 필터: 줄마다 가로 스크롤로 압축 */
   .jc-find .panel{padding:10px 14px;margin-top:16px}
   .jc-find .row{flex-wrap:nowrap;gap:8px;padding:8px 0}
-  .jc-find .row>b{width:44px!important;font-size:12px}
+  .jc-find .row>b{width:auto!important;min-width:42px;white-space:nowrap;font-size:12px}
   .jc-find .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-right:-14px;padding-right:14px;min-width:0}
   .jc-find .chips::-webkit-scrollbar{display:none}
   .jc-find .ch{flex:none;height:32px;padding:0 12px;font-size:13px}
