@@ -96,7 +96,8 @@
  .jc .jc-find .ask{padding:24px 20px;border-radius:18px;flex-direction:column;align-items:stretch}
  .jc .jc-find .ask::after{display:none}
  .jc .jc-find .ask b{font-size:21px!important}
- .jc .jc-find .ask .ak-b{min-width:0}
+ .jc .jc-find .ask>div{flex:none}
+ .jc .jc-find .ask .ak-b{min-width:0;flex:none}
  .jc .jc-find .ask .ak-b a{height:50px}
 }
 /* 차량 카드 연료 표시 (같은 차종이라도 연료별로 카드 분리) */
