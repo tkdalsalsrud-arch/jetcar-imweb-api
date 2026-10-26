@@ -6,7 +6,7 @@
   body:has(.jc-bar){padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
   html .jc{padding-bottom:0}
   /* 하단 바 카톡 버튼: 사이트 카톡상담 아이콘 사용 */
-  html .jc-bar .btn.k{background:#FEE500 url(https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png) center/38px 38px no-repeat;border-color:#FEE500;font-size:0;color:transparent}
+  html .jc-bar .btn.k{flex:0 0 48px;width:48px;height:48px;padding:0;border:0;box-shadow:none;border-radius:12px;background:#FEE500 url(https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png) center/cover no-repeat;font-size:0;color:transparent;overflow:hidden}
 
   .jc .wrap{padding:0 16px}
   .jc section{padding:44px 0}
