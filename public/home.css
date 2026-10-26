@@ -107,7 +107,7 @@
 /* 차량 카드 하단 개월수 목록 숨김 (연료만 표시) */
 .jc .jc-card .ft span:last-child:not(:first-child){display:none}
 /* 카드: 제조사를 차종명 앞에 */
-.jc .jc-card .nm .bn{color:#4b5563;font-weight:700;margin-right:2px}
+.jc .jc-card .nm .bn{font-size:12.5px;color:#6b7280;font-weight:700;margin-right:3px;vertical-align:1px;letter-spacing:0}
 
 /* 메인 맨 아래 상담 CTA */
 .jc .jc-cta{background:transparent!important;text-align:left;padding:48px 0 64px}
