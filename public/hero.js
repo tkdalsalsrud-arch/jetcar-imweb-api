@@ -8,6 +8,12 @@
   var N = 6, SEC = 4;
   var API = "https://jetcar-imweb-api.vercel.app/api/cars";
 
+  /* 메인 모바일 최적화 CSS (위젯 스타일보다 뒤에 오도록 body 끝에 붙임) */
+  if (!document.getElementById("jh-home-css")) {
+    var lk = document.createElement("link"); lk.id = "jh-home-css"; lk.rel = "stylesheet";
+    lk.href = "https://jetcar-imweb-api.vercel.app/home.css"; document.body.appendChild(lk);
+  }
+
   var im = document.getElementById("jcHeroImg");
   if (!im || im.getAttribute("data-jh")) return;
   im.setAttribute("data-jh", "1");

@@ -1,0 +1,56 @@
+/* 제트카 메인(홈) 모바일 최적화 — hero.js가 메인 페이지에서 불러옴 */
+@media (max-width:600px){
+  /* 아임웹 플로팅(고객센터·카톡) 버튼: 하단 바(전화·차량·카톡)와 겹치고 사진을 가려서 숨김 */
+  body:has(.jc) .floating-banner-wrap{display:none!important}
+
+  .jc .wrap{padding:0 16px}
+  .jc section{padding:44px 0}
+
+  /* 히어로 */
+  .jc-hero{padding:24px 0 28px}
+  .jc-hero .g{gap:22px}
+  .jc-hero .tag{font-size:12px;padding:5px 10px}
+  .jc-hero h1{font-size:29px;line-height:1.24;margin-top:12px;word-break:keep-all}
+  .jc-hero p{font-size:15px;margin-top:10px;word-break:keep-all}
+  .jc-hero .cta{flex-wrap:nowrap;gap:8px;margin-top:20px}
+  .jc-hero .cta .btn{flex:1;height:48px;padding:0 8px;font-size:15px;white-space:nowrap}
+  .jc-hero .pts{gap:6px 14px;margin-top:16px;font-size:13px}
+  .jc-hero .art{aspect-ratio:4/3;border-radius:18px}
+  .jc-hero .art img{object-position:50% 78%}
+  .jc-hero .chip{left:10px;top:10px;bottom:auto;padding:5px 10px;border-radius:999px;font-size:11px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  .jc-hero .chip b{display:inline;font-size:12px;margin-left:4px}
+  .jc-hero .art .jh-dots{top:auto;bottom:12px;left:14px;transform:none}
+  .jc-hero .art .jh-tag{right:10px;bottom:10px;padding:5px 10px;font-size:11.5px}
+
+  /* 신뢰 지표 */
+  .jc-trust .it{padding:14px 8px}
+
+  /* 차량 찾기 필터: 줄마다 가로 스크롤로 압축 */
+  .jc-find .panel{padding:10px 14px;margin-top:16px}
+  .jc-find .row{flex-wrap:nowrap;gap:8px;padding:8px 0}
+  .jc-find .row>b{width:44px!important;font-size:12px}
+  .jc-find .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-right:-14px;padding-right:14px;min-width:0}
+  .jc-find .chips::-webkit-scrollbar{display:none}
+  .jc-find .ch{flex:none;height:32px;padding:0 12px;font-size:13px}
+  .jc-find input{height:42px;font-size:14px}
+  .jc-find .meta{margin:16px 0 10px;font-size:13px}
+  .jc-find select{height:32px;font-size:13px}
+
+  /* 차량 카드 */
+  .jc-grid{gap:10px}
+  .jc-card .im{aspect-ratio:1/1}
+  .jc-card .bd{left:8px;top:8px;gap:4px}
+  .jc-card .bd span{font-size:10px;padding:3px 6px}
+  .jc-card .bo{padding:10px 11px 12px}
+  .jc-card .br{font-size:11px}
+  .jc-card .nm{font-size:15px}
+  .jc-card .tr{font-size:12px}
+  .jc-card .pr{flex-wrap:wrap;padding-top:8px;gap:0 3px}
+  .jc-card .pr b{font-size:17px}
+  .jc-card .pr i{flex-basis:100%;font-size:11px;margin-top:1px}
+  .jc-card .ft{flex-direction:column;gap:1px;font-size:11px;margin-top:6px}
+  .jc-card .ft span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .jc-find .ask{padding:18px;gap:12px}
+  .jc-find .ask .btn{width:100%}
+}
