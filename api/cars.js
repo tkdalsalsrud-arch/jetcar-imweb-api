@@ -15,7 +15,8 @@ const FUEL = /^(가솔린|디젤|경유|하이브리드|전기|LPG|LPi|LPI)$/i;
 const SKIP = /^(2WD|4WD|AWD|RWD|\d+인승|\d+(\.\d+)?만|디올뉴|더뉴|올뉴|디|더|뉴|연식|카|\/|중고)$/;
 
 function parse(p) {
-  let n = p.name.replace(/\[전국\]/g, ' ').replace(/\([^)]*$/, ' ').replace(/\([^)]*\/[^)]*\)/g, ' ').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  // 키워드 괄호(…장기렌트…)만 제거 — 차량명 메모 괄호(예: (베이지/오렌지브라운투톤))는 옵션 구분용으로 유지
+  let n = p.name.replace(/\[전국\]/g, ' ').replace(/\([^)]*$/, ' ').replace(/\([^)]*(장기렌|렌트카|렌터카|개월|연식)[^)]*\)/g, ' ').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
   let period = null, m;
   if ((m = n.match(/(\d+)\s*개월/))) period = +m[1];
   else if ((m = n.match(/(\d+)\s*년\s*렌트/))) period = +m[1] * 12;
