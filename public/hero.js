@@ -62,6 +62,14 @@
   if (!im || im.getAttribute("data-jh")) return;
   im.setAttribute("data-jh", "1");
   var art = im.parentNode;
+  var chip = art.querySelector(".chip");
+  function placeChip() {
+    if (!chip) return;
+    var m = window.matchMedia("(max-width:600px)").matches;
+    if (m && chip.parentNode === art) { art.parentNode.insertBefore(chip, art.nextSibling); chip.classList.add("out"); }
+    else if (!m && chip.parentNode !== art) { art.appendChild(chip); chip.classList.remove("out"); }
+  }
+  placeChip(); window.addEventListener("resize", placeChip);
   function show() { im.style.opacity = "1"; }
 
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -76,7 +84,8 @@
       ".jc-hero .art .jh-tag:empty{opacity:0}" +
       ".jc-hero .art .jh-tag b{color:#9cc0ff!important;font-weight:800}" +
       ".jc-hero .art .jh-dots{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:2;display:flex;gap:6px}" +
-      ".jc-hero .art .jh-dots i{width:6px;height:6px;border-radius:50%;background:rgba(17,24,39,.25);transition:.3s}" +
+      ".jc-hero .art{touch-action:pan-y}" +
+      ".jc-hero .art .jh-dots{padding:6px 4px}.jc-hero .art .jh-dots i{cursor:pointer;width:6px;height:6px;border-radius:50%;background:rgba(17,24,39,.25);transition:.3s}" +
       ".jc-hero .art .jh-dots i.on{width:18px;border-radius:3px;background:#1b4fe0}" +
       ".jc-hero .art .chip{z-index:2}" +
       "@media(max-width:600px){.jc-hero .art .jh-tag{right:10px;bottom:10px;font-size:12px;padding:6px 11px}}";
@@ -96,7 +105,7 @@
     var dots = document.createElement("div"); dots.className = "jh-dots";
     if (L.length > 1) { L.forEach(function () { dots.appendChild(document.createElement("i")); }); art.appendChild(dots); }
 
-    var k = 0, front = im, back = b;
+    var k = -1, front = im, back = b, seq = 0, timer = null;
     function src(x) { return x.img + "?w=900"; }
     function label(x) {
       tag.href = "/allcar/?idx=" + x.idx;
@@ -104,16 +113,33 @@
       im.alt = back.alt = x.b + " " + x.m + " 장기렌트";
       [].forEach.call(dots.children, function (d, i) { d.className = i === k ? "on" : ""; });
     }
-    function go() {
-      k = (k + 1) % L.length;
-      var x = L[k], pre = new Image();
+    function goTo(i) {
+      k = (i + L.length) % L.length;
+      var x = L[k], my = ++seq, pre = new Image();
+      label(x);
       pre.onload = function () {
+        if (my !== seq) return;                      // 빠르게 넘긴 경우 마지막 것만 표시
         back.src = src(x); back.style.opacity = "1"; front.style.opacity = "0";
-        var t = front; front = back; back = t; label(x);
+        var t = front; front = back; back = t;
       };
       pre.src = src(x);
     }
-    show(); k = -1; go();
-    if (L.length > 1) setInterval(go, SEC * 1000);
+    function restart() { if (timer) clearInterval(timer); if (L.length > 1) timer = setInterval(function () { goTo(k + 1); }, SEC * 1000); }
+    show(); goTo(0); restart();
+
+    /* 손가락으로 좌우 넘기기 + 사진 클릭 시 해당 차량으로 이동 */
+    var sx = 0, sy = 0, swiped = false;
+    art.style.cursor = "pointer";
+    art.addEventListener("touchstart", function (e) { var t = e.touches[0]; sx = t.clientX; sy = t.clientY; swiped = false; }, { passive: true });
+    art.addEventListener("touchend", function (e) {
+      var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (L.length > 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) { swiped = true; goTo(k + (dx < 0 ? 1 : -1)); restart(); }
+    }, { passive: true });
+    [].forEach.call(dots.children, function (d, i) { d.addEventListener("click", function (e) { e.stopPropagation(); goTo(i); restart(); }); });
+    art.addEventListener("click", function (e) {
+      if (swiped) { swiped = false; e.preventDefault(); return; }
+      if (e.target.closest(".jh-tag") || e.target.closest(".chip")) return;
+      if (tag.href) location.href = tag.href;
+    });
   }).catch(show);
 })();
