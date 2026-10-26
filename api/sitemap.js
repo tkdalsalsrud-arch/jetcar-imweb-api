@@ -22,6 +22,7 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.status(200).send(xml);
   } catch (e) {
+    res.setHeader('Cache-Control', 'no-store'); // 오류는 엣지 캐시 금지
     res.status(502).send('error: ' + String(e));
   }
 };
