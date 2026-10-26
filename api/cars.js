@@ -88,6 +88,7 @@ module.exports = async (req, res) => {
     const cars = group(all);
     res.status(200).json({ updated: new Date().toISOString(), total: all.length, cars });
   } catch (e) {
+    res.setHeader('Cache-Control', 'no-store'); // 오류는 엣지 캐시 금지
     res.status(502).json({ error: String(e) });
   }
 };
