@@ -45,6 +45,8 @@ document.getElementById("jxSort").onchange=function(e){st.sort=e.target.value;re
 render(d)}).catch(function(e){console.warn("jx",e)});
 })();}
   else if(m.dataset.kind==="detail"){html(m,DHTML);(function(){
+/* 상세설명 템플릿 CSS 공통 적용 (에디터가 <style>을 지워도 유지) */
+var pd=document.getElementById("prod_detail_body");if(pd&&pd.querySelector(".hero,.car,.pcard")){pd.classList.add("jx-tpl");if(!document.getElementById("jx-desc-css")){var lk=document.createElement("link");lk.id="jx-desc-css";lk.rel="stylesheet";lk.href="https://jetcar-imweb-api.vercel.app/desc.css";document.head.appendChild(lk)}}
 var API="https://jetcar-imweb-api.vercel.app/api/cars";
 var idx=+(new URLSearchParams(location.search).get("idx")||0);if(!idx)return;
 var host=document.querySelector(".shop-content>.clearfix");if(!host)return;
