@@ -14,6 +14,28 @@
     lk.href = "https://jetcar-imweb-api.vercel.app/home.css"; document.body.appendChild(lk);
   }
 
+  /* '찾는 차가 없나요?' 배너 보강 (문구·버튼·안내 칩) — 마크업은 위젯 #1, 스타일은 home.css */
+  (function () {
+    var a = document.querySelector(".jc-find .ask");
+    if (!a || a.getAttribute("data-ak")) return;
+    a.setAttribute("data-ak", "1");
+    var box = a.querySelector("div"), b = box && box.querySelector("b"), btn = a.querySelector("a.btn");
+    if (!box || !b) return;
+    var k = document.createElement("span"); k.className = "ak-k"; k.textContent = "1:1 차량 찾기 · 무료";
+    box.insertBefore(k, b);
+    b.innerHTML = "찾는 차가 없나요? <em>제트카가 대신 찾아드려요</em>";
+    var c = document.createElement("div"); c.className = "ak-c";
+    c.innerHTML = "<span>원하는 차종</span><span>월 예산</span><span>계약 기간</span><span>출고 희망일</span>";
+    box.appendChild(c);
+    var w = document.createElement("div"); w.className = "ak-b";
+    var kk = document.createElement("a"); kk.className = "ak-kk"; kk.href = btn ? btn.href : "https://pf.kakao.com/_aQmWd"; kk.target = "_blank";
+    kk.innerHTML = '<img src="https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png" alt="">카카오톡으로 문의하기';
+    var tel = document.createElement("a"); tel.className = "ak-tel"; tel.href = "tel:1522-3501"; tel.textContent = "📞 전화 1522-3501";
+    w.appendChild(kk); w.appendChild(tel);
+    if (btn) btn.style.display = "none";
+    a.appendChild(w);
+  })();
+
   var im = document.getElementById("jcHeroImg");
   if (!im || im.getAttribute("data-jh")) return;
   im.setAttribute("data-jh", "1");
