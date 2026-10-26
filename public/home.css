@@ -146,3 +146,10 @@
  .jc .jc-cta .ct-c span{font-size:12px;padding:5px 10px}
 }
 
+/* 제조사·차종·유종 한 줄, 하단 유종 표시 제거 (2026-10-26) */
+.jc .jc-card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc .jc-card .ft{display:none!important}
+@media(max-width:600px){
+ .jc .jc-card .nm .bn{font-size:10.5px;margin-right:2px;vertical-align:1px}
+ .jc .jc-card .nm .fu{font-size:9.5px;padding:1px 5px;margin-left:3px;vertical-align:2px}
+}
