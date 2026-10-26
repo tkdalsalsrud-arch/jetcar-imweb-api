@@ -57,7 +57,7 @@ var load=JX.load;
 function render(car,cars){
 var slot=document.createElement("div");slot.className="jd-slot";
 var cur=car?car.p.filter(function(p){return p[2]===idx})[0]:null;var curPer=cur?cur[0]:period(name);
-var priceEl=document.querySelector(".goods_form .price, .goods-form-header .pay, ._price_total, .goods_form .pay");var priceTxt=priceEl?priceEl.textContent.replace(/[^\d]/g,""):"";var price=cur?cur[1]:(+priceTxt||0);
+var priceEl=document.querySelector("#prod_goods_form .real_price, .goods_form .price, .goods-form-header .pay, ._price_total, .goods_form .pay");var priceTxt=priceEl?priceEl.textContent.replace(/[^\d]/g,""):"";var price=cur?cur[1]:(+priceTxt||0);
 var title=car?car.b+" "+car.m:name.replace(/\[전국\]/g,"").split(/장기렌/)[0];
 var per=car?car.p.filter(function(p){return p[0]>0}):[];
 var perHtml=per.length?per.map(function(p){return '<a href="/allcar/?idx='+p[2]+'" class="'+(p[2]===idx?"on":"")+'"><b>'+p[0]+'</b>개월</a>'}).join(""):"";
