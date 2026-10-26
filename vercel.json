@@ -1,1 +1,4 @@
-{ "functions": { "api/cars.js": { "maxDuration": 30 } } }
+{
+  "functions": { "api/cars.js": { "maxDuration": 30 }, "api/sitemap.js": { "maxDuration": 30 } },
+  "rewrites": [ { "source": "/sitemap.xml", "destination": "/api/sitemap" } ]
+}
