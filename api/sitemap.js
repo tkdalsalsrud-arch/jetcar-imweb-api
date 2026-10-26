@@ -1,6 +1,6 @@
 // 전체 상품 사이트맵 — 아임웹 자동 사이트맵은 상품 1,000개까지만 담으므로 전량(2,100+)을 별도 제공
 // robots.txt 의 Sitemap: 줄로 참조 (구글은 타 호스트 사이트맵을 robots.txt 경유로 수용)
-const { fetchAll } = require('./cars');
+const { fetchAll, CAT_OLD } = require('./cars');
 const SITE = 'https://jetcar1000.imweb.me';
 const PAGES = [['/jetcar', '1.0', 'daily'], ['/allcar', '0.9', 'daily'], ['/9', '0.8', 'daily'], ['/3', '0.8', 'daily'], ['/4', '0.8', 'daily'],
   ['/5', '0.8', 'daily'], ['/6', '0.8', 'daily'], ['/7', '0.8', 'daily'], ['/8', '0.8', 'daily'], ['/contact', '0.5', 'monthly']];
@@ -9,7 +9,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
   try {
-    const all = await fetchAll();
+    // 이전 등록 차량(목록에서는 제외)도 상세 페이지는 살아 있으므로 사이트맵에는 계속 포함
+    const [cur, old] = await Promise.all([fetchAll(), fetchAll(CAT_OLD)]);
+    const all = cur.concat(old.filter(o => !cur.some(c => c.idx === o.idx)));
     const today = new Date().toISOString().slice(0, 10);
     const maxIdx = Math.max(...all.map(p => p.idx));
     const urls = PAGES.map(([u, pr, cf]) => `<url><loc>${SITE}${u}</loc><lastmod>${today}</lastmod><changefreq>${cf}</changefreq><priority>${pr}</priority></url>`);

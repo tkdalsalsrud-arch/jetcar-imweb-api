@@ -2,7 +2,9 @@
 // GET /api/cars            → { updated, total, cars:[...] }
 // GET /api/cars?raw=1      → 원본 상품 목록 (디버그)
 const SITE = 'https://jetcar1000.imweb.me';
-const LIST = '/ajax/get_shop_list_view.cm?pagesize=500&category=s202511130e1a8e1a84f3f&sort=&menu_url=%2Fallcar%2F&widget_code=w202511145aff69e4b3664&page=';
+const CAT_ALL = 's202511130e1a8e1a84f3f';  // '전체' — 차량 목록·검색에 쓰는 카테고리
+const CAT_OLD = 's202610264214d58ef4e3e';  // '이전 등록 차량' — 옛 형식 상품 325개 (목록 제외, 페이지·사이트맵은 유지)
+const LIST = cat => '/ajax/get_shop_list_view.cm?pagesize=500&category=' + cat + '&sort=&menu_url=%2Fallcar%2F&widget_code=w202511145aff69e4b3664&page=';
 
 const BR = ['현대','기아','제네시스','르노','KGM','KG모빌리티','쉐보레','BYD','테슬라','폭스바겐','미니','MINI','벤츠','아우디','BMW','현대자동차','기아자동차','르노자동차','르노코리아','뉴기아'];
 const BA = {현대자동차:'현대',기아자동차:'기아',뉴기아:'기아',르노자동차:'르노',르노코리아:'르노',KG모빌리티:'KGM',MINI:'미니'};
@@ -39,10 +41,10 @@ function parse(p) {
   return { brand, model, trim, fuel: fuel || null, seats, drive, year, period, price: p.price, idx: p.idx, img: p.image_url, name: p.name };
 }
 
-async function fetchAll() {
+async function fetchAll(cat = CAT_ALL) {
   const all = [];
   for (let page = 1; page <= 8; page++) {
-    const r = await fetch(SITE + LIST + page, { headers: {
+    const r = await fetch(SITE + LIST(cat) + page, { headers: {
       'x-requested-with': 'XMLHttpRequest', 'accept': 'application/json, text/javascript, */*; q=0.01',
       'accept-language': 'ko-KR,ko;q=0.9', 'referer': SITE + '/allcar',
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' } });
@@ -93,4 +95,5 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.fetchAll = fetchAll;
+module.exports.CAT_OLD = CAT_OLD;
 module.exports.group = group;
