@@ -23,6 +23,7 @@
       ".jc-hero .art img{transition:opacity .8s ease}" +
       ".jc-hero .art .jh-b{position:absolute;inset:0;opacity:0}" +
       ".jc-hero .art .jh-tag{position:absolute;right:16px;bottom:16px;z-index:2;display:flex;align-items:center;gap:8px;background:rgba(17,24,39,.82);color:#fff;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;transition:opacity .4s}" +
+      ".jc-hero .art .jh-tag:empty{opacity:0}" +
       ".jc-hero .art .jh-tag b{color:#8fb2ff;font-weight:800}" +
       ".jc-hero .art .jh-dots{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:2;display:flex;gap:6px}" +
       ".jc-hero .art .jh-dots i{width:6px;height:6px;border-radius:50%;background:rgba(17,24,39,.25);transition:.3s}" +
@@ -46,7 +47,7 @@
     if (L.length > 1) { L.forEach(function () { dots.appendChild(document.createElement("i")); }); art.appendChild(dots); }
 
     var k = 0, front = im, back = b;
-    function src(x) { return x.img + "?w=1200"; }
+    function src(x) { return x.img + "?w=900"; }
     function label(x) {
       tag.href = "/allcar/?idx=" + x.idx;
       tag.innerHTML = x.b + " " + x.m + " <b>월 " + won(x.min) + "</b>";
@@ -62,9 +63,7 @@
       };
       pre.src = src(x);
     }
-    var first = new Image();
-    first.onload = first.onerror = function () { im.src = src(L[0]); label(L[0]); show(); };
-    first.src = src(L[0]);
+    show(); k = -1; go();
     if (L.length > 1) setInterval(go, SEC * 1000);
   }).catch(show);
 })();
