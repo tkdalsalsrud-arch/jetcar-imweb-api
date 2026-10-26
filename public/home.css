@@ -5,6 +5,8 @@
   /* 하단 고정 바가 푸터를 가리지 않도록 페이지 맨 아래에 여백 */
   body:has(.jc-bar){padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
   html .jc{padding-bottom:0}
+  /* 하단 바 카톡 버튼: 사이트 카톡상담 아이콘 사용 */
+  html .jc-bar .btn.k{background:#FEE500 url(https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/fb7c61294daf0.png) center/46px 46px no-repeat;border-color:#FEE500;font-size:0;color:transparent}
 
   .jc .wrap{padding:0 16px}
   .jc section{padding:44px 0}
@@ -35,7 +37,8 @@
   .jc-find .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-right:-14px;padding-right:14px;min-width:0}
   .jc-find .chips::-webkit-scrollbar{display:none}
   .jc-find .ch{flex:none;height:32px;padding:0 12px;font-size:13px}
-  .jc-find input{height:42px;font-size:14px}
+  .jc-find .srch{min-width:0;flex:1 1 auto;width:100%}
+  .jc-find input{height:42px;font-size:14px;min-width:0;width:100%;box-sizing:border-box}
   .jc-find .meta{margin:16px 0 10px;font-size:13px}
   .jc-find select{height:32px;font-size:13px}
 
