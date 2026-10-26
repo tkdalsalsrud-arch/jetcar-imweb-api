@@ -36,6 +36,28 @@
     a.appendChild(w);
   })();
 
+  /* 메인 맨 아래 상담 CTA 재구성 — 스타일은 home.css (.ct) */
+  (function () {
+    var s = document.querySelector(".jc-cta");
+    if (!s || s.getAttribute("data-ct")) return;
+    var w = s.querySelector(".wrap"), h = w && w.querySelector("h2"), p = w && w.querySelector("p"), c = w && w.querySelector(".cta");
+    if (!h || !p || !c) return;
+    s.setAttribute("data-ct", "1");
+    var ct = document.createElement("div"); ct.className = "ct";
+    var l = document.createElement("div"); l.className = "ct-l";
+    l.innerHTML = '<span class="ct-k">무료 상담 · 부담 없이 물어보세요</span>';
+    l.appendChild(h); l.appendChild(p);
+    var ch = document.createElement("div"); ch.className = "ct-c";
+    ch.innerHTML = "<span>누구나</span><span>비대면 계약</span><span>무심사</span><span>전국 탁송</span>";
+    l.appendChild(ch);
+    c.className = "ct-r";
+    var k = c.querySelector(".btn.k"), t = c.querySelector(".btn.w"), o = c.querySelector(".btn.o");
+    if (k) { k.innerHTML = '<img src="https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png" alt="">카카오톡 상담'; c.insertBefore(k, c.firstChild); }
+    if (t) t.innerHTML = '<span class="ct-ph">📞</span><span><small>전화 상담</small>1522-3501</span>';
+    if (o) o.removeAttribute("style");
+    ct.appendChild(l); ct.appendChild(c); w.appendChild(ct);
+  })();
+
   var im = document.getElementById("jcHeroImg");
   if (!im || im.getAttribute("data-jh")) return;
   im.setAttribute("data-jh", "1");
