@@ -58,6 +58,25 @@
     ct.appendChild(l); ct.appendChild(c); w.appendChild(ct);
   })();
 
+  /* 히어로 꾸미기: 카톡 아이콘, 강조 문구, 사진 주변 떠 있는 배지 */
+  (function () {
+    var h = document.querySelector(".jc-hero");
+    if (!h || h.getAttribute("data-hd")) return;
+    h.setAttribute("data-hd", "1");
+    var k = h.querySelector(".cta .btn.k");
+    if (k) k.innerHTML = '<img src="https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png" alt="">카카오톡 상담';
+    var p = h.querySelector("p");
+    if (p) p.innerHTML = p.innerHTML.replace("저신용·신용불량·개인회생도 OK.", "<b>저신용·신용불량·개인회생도 OK.</b>");
+    var art = h.querySelector(".art");
+    if (art && !art.parentNode.classList.contains("art-w")) {
+      var w = document.createElement("div"); w.className = "art-w";
+      art.parentNode.insertBefore(w, art); w.appendChild(art);
+      w.insertAdjacentHTML("beforeend",
+        '<div class="fb a"><i>📝</i><span>비대면 계약<small>휴대폰으로 서명</small></span></div>' +
+        '<div class="fb b"><i>🚚</i><span>전국 탁송<small>원하는 곳으로</small></span></div>');
+    }
+  })();
+
   var im = document.getElementById("jcHeroImg");
   if (!im || im.getAttribute("data-jh")) return;
   im.setAttribute("data-jh", "1");

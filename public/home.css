@@ -158,3 +158,48 @@
  .jc .jc-hero .chip.out{position:static;display:flex;align-items:center;justify-content:center;width:fit-content;margin:12px auto 0;padding:6px 14px;border-radius:999px;background:#eef3ff;box-shadow:none;font-size:12px;color:#374151}
  .jc .jc-hero .chip.out b{display:inline;font-size:13px;margin-left:5px}
 }
+
+/* ── 메인 히어로 꾸미기 (2026-10-26) ───────────────────────── */
+.jc .jc-hero{position:relative;overflow:hidden;
+ background:radial-gradient(38% 60% at 88% 18%,rgba(91,140,255,.28) 0%,rgba(91,140,255,0) 70%),radial-gradient(32% 50% at 6% 92%,rgba(124,255,178,.16) 0%,rgba(124,255,178,0) 70%),linear-gradient(180deg,#eef3ff 0%,#f7f9ff 60%,#fff 100%)}
+.jc .jc-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+ background-image:radial-gradient(rgba(27,79,224,.13) 1px,transparent 1.2px);background-size:22px 22px;
+ -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 55%,transparent 90%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.35) 55%,transparent 90%)}
+.jc .jc-hero .wrap{position:relative;z-index:1}
+.jc .jc-hero .tag{background:#fff;border:1px solid #cdd9ff;box-shadow:0 6px 16px rgba(27,79,224,.10);padding:7px 14px 7px 10px;font-weight:800}
+.jc .jc-hero .tag::before{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:jhPulse 2s infinite}
+@keyframes jhPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.jc .jc-hero h1 em{position:relative;z-index:0;background:linear-gradient(90deg,#1b4fe0 0%,#3b6dff 55%,#5b8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.jc .jc-hero h1 em::after{content:"";position:absolute;left:-2px;right:-4px;bottom:.06em;height:.32em;border-radius:6px;background:rgba(255,224,102,.55);z-index:-1}
+.jc .jc-hero p b{color:#111827}
+.jc .jc-hero .cta{gap:12px}
+.jc .jc-hero .cta .btn{height:56px;padding:0 26px;border-radius:14px;font-size:16px;font-weight:800;text-decoration:none!important;transition:transform .15s,box-shadow .15s}
+.jc .jc-hero .cta .btn:hover{transform:translateY(-2px)}
+.jc .jc-hero .cta .btn.p{background:linear-gradient(135deg,#1b4fe0,#3b6dff)!important;color:#fff!important;border:0!important;box-shadow:0 12px 26px rgba(27,79,224,.32)}
+.jc .jc-hero .cta .btn.p::after{content:"→";margin-left:2px;transition:transform .15s}
+.jc .jc-hero .cta .btn.p:hover::after{transform:translateX(3px)}
+.jc .jc-hero .cta .btn.k{background:#FEE500!important;color:#191919!important;border:0!important;box-shadow:0 10px 22px rgba(254,229,0,.35)}
+.jc .jc-hero .cta .btn.k img{width:22px;height:22px;border-radius:6px}
+.jc .jc-hero .pts{gap:8px}
+.jc .jc-hero .pts span{display:inline-flex;align-items:center;background:rgba(255,255,255,.85);border:1px solid #e1e8fb;border-radius:999px;padding:6px 12px 6px 8px;font-size:13px;font-weight:700;color:#1f2937;box-shadow:0 2px 6px rgba(17,24,39,.04)}
+.jc .jc-hero .pts span::before{content:"✓";display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#1b4fe0;color:#fff;font-size:11px;margin-right:6px}
+.jc .jc-hero .art-w{position:relative}
+.jc .jc-hero .art{border-radius:26px;box-shadow:0 0 0 8px rgba(255,255,255,.75),0 30px 60px rgba(27,79,224,.20)}
+.jc .jc-hero .art-w::before{content:"";position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(91,140,255,.35),rgba(91,140,255,0) 70%);pointer-events:none}
+.jc .jc-hero .art .chip{background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.8)}
+.jc .jc-hero .fb{position:absolute;z-index:3;display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 14px 30px rgba(17,24,39,.14);font-size:13px;font-weight:800;color:#111827;white-space:nowrap;animation:jhFloat 4.5s ease-in-out infinite}
+.jc .jc-hero .fb i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;font-style:normal;font-size:15px;background:#eef3ff}
+.jc .jc-hero .fb small{display:block;font-size:11px;font-weight:600;color:#6b7280}
+.jc .jc-hero .fb.a{left:-34px;top:22%}
+.jc .jc-hero .fb.b{right:-22px;top:-18px;animation-delay:-2.2s}
+.jc .jc-hero .fb.b i{background:#ecfdf5}
+@keyframes jhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media(max-width:1100px){.jc .jc-hero .fb.a{left:-12px}.jc .jc-hero .fb.b{right:-8px}}
+@media(max-width:900px){.jc .jc-hero .fb{display:none}}
+@media(max-width:600px){
+ .jc .jc-hero .cta .btn{height:50px;padding:0 10px;font-size:15px}
+ .jc .jc-hero .pts{gap:6px}
+ .jc .jc-hero .pts span{font-size:12px;padding:5px 10px 5px 6px}
+ .jc .jc-hero .art{box-shadow:0 0 0 5px rgba(255,255,255,.75),0 18px 36px rgba(27,79,224,.18)}
+}
+
