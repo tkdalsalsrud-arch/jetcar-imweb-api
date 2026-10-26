@@ -157,3 +157,11 @@
 #prod_detail_body.jx-tpl .opt .ic{width:16px;height:16px}
 #prod_detail_body.jx-tpl .opt .ic svg{width:10px;height:10px}
 }
+/* 렌트 비용: 보증금·정비·탁송료 칩 항상 한 줄 (좁은 화면에선 칩을 균등 축소) */
+#prod_detail_body.jx-tpl .price-meta{flex-wrap:nowrap}
+#prod_detail_body.jx-tpl .price-meta .meta{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:600px){
+#prod_detail_body.jx-tpl .price-meta{gap:6px}
+#prod_detail_body.jx-tpl .price-meta .meta{flex:1 1 0;text-align:center;padding:8px 6px;font-size:12px}
+}
+@media(max-width:360px){#prod_detail_body.jx-tpl .price-meta .meta{font-size:11px;padding:7px 4px}}
