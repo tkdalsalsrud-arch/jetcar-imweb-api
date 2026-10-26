@@ -91,3 +91,5 @@ module.exports = async (req, res) => {
     res.status(502).json({ error: String(e) });
   }
 };
+module.exports.fetchAll = fetchAll;
+module.exports.group = group;
