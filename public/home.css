@@ -2,6 +2,9 @@
 @media (max-width:600px){
   /* 아임웹 플로팅(고객센터·카톡) 버튼: 하단 바(전화·차량·카톡)와 겹치고 사진을 가려서 숨김 */
   body:has(.jc) .floating-banner-wrap{display:none!important}
+  /* 하단 고정 바가 푸터를 가리지 않도록 페이지 맨 아래에 여백 */
+  body:has(.jc-bar){padding-bottom:calc(72px + env(safe-area-inset-bottom))!important}
+  html .jc{padding-bottom:0}
 
   .jc .wrap{padding:0 16px}
   .jc section{padding:44px 0}
