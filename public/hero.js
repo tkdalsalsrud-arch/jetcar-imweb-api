@@ -133,7 +133,7 @@
     art.addEventListener("touchstart", function (e) { var t = e.touches[0]; sx = t.clientX; sy = t.clientY; swiped = false; }, { passive: true });
     art.addEventListener("touchend", function (e) {
       var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      if (L.length > 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) { swiped = true; goTo(k + (dx < 0 ? 1 : -1)); restart(); }
+      if (L.length > 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) { swiped = true; setTimeout(function () { swiped = false; }, 400); goTo(k + (dx < 0 ? 1 : -1)); restart(); }
     }, { passive: true });
     [].forEach.call(dots.children, function (d, i) { d.addEventListener("click", function (e) { e.stopPropagation(); goTo(i); restart(); }); });
     art.addEventListener("click", function (e) {
