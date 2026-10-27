@@ -147,19 +147,6 @@
       tag.href = "/allcar/?idx=" + x.idx;
       tag.innerHTML = x.b + " " + x.m + " <b>월 " + won(x.min) + "</b>";
       im.alt = back.alt = x.b + " " + x.m + " 장기렌트";
-      /* PC: 화살표 버튼 + 마우스 드래그로 넘기기, 마우스 올리면 자동넘김 일시정지 */
-    prev.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k - 1); restart(); });
-    next.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k + 1); restart(); });
-    var mx = null;
-    art.addEventListener("dragstart", function (e) { e.preventDefault(); });
-    art.addEventListener("mousedown", function (e) { if (e.button !== 0 || e.target.closest(".jh-nav,.jh-tag,.chip")) return; mx = e.clientX; });
-    window.addEventListener("mousemove", function (e) { if (mx !== null && Math.abs(e.clientX - mx) > 8) art.classList.add("jh-drag"); });
-    window.addEventListener("mouseup", function (e) {
-      if (mx === null) return; var dx = e.clientX - mx; mx = null; art.classList.remove("jh-drag");
-      if (L.length > 1 && Math.abs(dx) > 40) { swiped = true; setTimeout(function () { swiped = false; }, 400); goTo(k + (dx < 0 ? 1 : -1)); restart(); }
-    });
-    art.addEventListener("mouseenter", function () { if (timer) { clearInterval(timer); timer = null; } });
-    art.addEventListener("mouseleave", function () { mx = null; art.classList.remove("jh-drag"); restart(); });
     [].forEach.call(dots.children, function (d, i) { d.className = i === k ? "on" : ""; });
     }
     function goTo(i) {
