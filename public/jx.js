@@ -6,7 +6,7 @@ var JX=window.JX={load:function(){
  try{var c=JSON.parse(sessionStorage.getItem("__jx_cars")||"null");if(c&&c.d&&c.d.cars&&c.d.cars.length&&Date.now()-c.t<36e5)return Promise.resolve(c.d)}catch(e){}
  return fetch(API).then(function(r){if(!r.ok)throw new Error("api "+r.status);return r.json()}).then(function(d){if(!d||!d.cars||!d.cars.length)throw new Error("api empty");try{sessionStorage.setItem("__jx_cars",JSON.stringify({t:Date.now(),d:d}))}catch(e){}return d})}};
 function html(m,h){var t=document.createElement("div");t.innerHTML=h;while(t.firstChild)m.parentNode.insertBefore(t.firstChild,m);}
-function run(){
+function run(){if(!document.getElementById("jf-js")){var _f=document.createElement("script");_f.id="jf-js";_f.src="https://jetcar-imweb-api.vercel.app/footer.js";document.body.appendChild(_f)};
  var g=document.createElement("style");g.textContent=GCSS;document.head.appendChild(g);
  document.querySelectorAll(".jx-mount").forEach(function(m){if(m.__done)return;m.__done=1;
   if(m.dataset.kind==="list"){html(m,LHTML);(function(){

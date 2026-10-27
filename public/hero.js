@@ -8,6 +8,9 @@
   var N = 6, SEC = 4;
   var API = "https://jetcar-imweb-api.vercel.app/api/cars";
 
+  /* 하단(푸터) 디자인 */
+  if(!document.getElementById("jf-js")){var _f=document.createElement("script");_f.id="jf-js";_f.src="https://jetcar-imweb-api.vercel.app/footer.js";document.body.appendChild(_f)}
+
   /* 메인 모바일 최적화 CSS (위젯 스타일보다 뒤에 오도록 body 끝에 붙임) */
   if (!document.getElementById("jh-home-css")) {
     var lk = document.createElement("link"); lk.id = "jh-home-css"; lk.rel = "stylesheet";
