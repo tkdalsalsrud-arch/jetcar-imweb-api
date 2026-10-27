@@ -38,7 +38,6 @@
     "#doz_footer .jf-legal .footer-company-info{margin:0!important;text-align:left!important}" +
     "#doz_footer .jf-legal p{display:flex;flex-wrap:wrap;gap:2px 18px;margin:0!important;text-align:left!important}" +
     "#doz_footer .jf-legal span{position:relative;font-size:12px!important;color:#7d8db3!important;line-height:1.7}" +
-    "#doz_footer .jf-legal span+span::before{content:'';position:absolute;left:-8px;top:50%;width:1px;height:10px;margin-top:-5px;background:rgba(255,255,255,.15)}" +
     "@media(max-width:900px){#doz_footer .jf-top{grid-template-columns:1fr 1fr}#doz_footer .jf-brand{grid-column:1/-1}}" +
     "@media(max-width:600px){#doz_footer .footer-section .inside{padding:0 18px}#doz_footer .jf-top{grid-template-columns:1fr;gap:26px;padding:36px 0 28px}" +
     "#doz_footer .jf-logo img{height:32px}#doz_footer .jf-cta a{flex:1;justify-content:center}#doz_footer .jf-col .big{font-size:22px}" +
