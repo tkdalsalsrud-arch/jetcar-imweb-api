@@ -222,3 +222,9 @@
  .jc .jc-hero .art-w::before{display:none}
  .jc .jc-hero .fb{font-size:14px;padding:11px 16px}
 }
+/* 디자인팀 의견 (2026-10-27): 제목 Pretendard 900·58px, '오늘 바로 계약하는' = 실시간 견적 버튼 색(#1b4fe0) */
+.jc .jc-hero h1{font-family:"Pretendard Variable",Pretendard,-apple-system,"Noto Sans KR",sans-serif!important;font-weight:900!important}
+.jc .jc-hero h1 em{background:none!important;-webkit-text-fill-color:#1b4fe0!important;color:#1b4fe0!important}
+.jc .jc-hero .cta .btn.p{background:#1b4fe0!important}
+.jc .jc-hero .cta .btn.p:hover{background:#1742c4!important}
+@media(min-width:901px){.jc .jc-hero h1{font-size:clamp(44px,3.85vw,58px)}}
