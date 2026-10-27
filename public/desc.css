@@ -176,7 +176,7 @@
 /* 상단 바 */
 #prod_detail_body .jcb-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 28px;background:#fff;border-bottom:1px solid var(--line)}
 #prod_detail_body .jcb-logo{position:relative;display:block;width:150px;aspect-ratio:894/238;overflow:hidden;flex:none}
-#prod_detail_body .jcb-logo img{position:absolute;width:120.8%!important;height:auto!important;left:-10.29%;top:-46.53%;margin:0!important}
+#prod_detail_body .jcb-logo img{position:absolute;width:120.8%!important;height:auto!important;left:-10.29%;top:-174.79%;margin:0!important}
 #prod_detail_body .jcb-pills{display:flex;gap:6px}
 #prod_detail_body .jcb-pills span{font-size:13px;font-weight:800;color:#fff;background:var(--n);border-radius:999px;padding:6px 14px}
 #prod_detail_body .jcb-pills span.on{background:var(--b2)}
