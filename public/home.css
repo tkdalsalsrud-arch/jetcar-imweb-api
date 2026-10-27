@@ -203,3 +203,22 @@
  .jc .jc-hero .art{box-shadow:0 0 0 5px rgba(255,255,255,.75),0 18px 36px rgba(27,79,224,.18)}
 }
 
+
+/* ── 메인 히어로 v2 (2026-10-27): 배경 박스 제거, 사진·글씨 키움 ── */
+.jc .jc-hero{background:#fff}
+.jc .jc-hero::before{display:none}
+@media(min-width:901px){
+ .jc .jc-hero{padding:48px 0 56px}
+ .jc .jc-hero .wrap{max-width:1250px;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:44px;align-items:center}
+ .jc .jc-hero h1{font-size:clamp(46px,4.1vw,62px);font-weight:900;line-height:1.16;letter-spacing:-.035em;color:#0b1220}
+ .jc .jc-hero p{font-size:18px;line-height:1.65;font-weight:500;color:#1f2937;margin-top:18px}
+ .jc .jc-hero .tag{font-size:14px;padding:8px 16px 8px 12px}
+ .jc .jc-hero .cta{margin-top:30px}
+ .jc .jc-hero .cta .btn{height:60px;padding:0 30px;font-size:17px}
+ .jc .jc-hero .pts{margin-top:24px}
+ .jc .jc-hero .pts span{font-size:14px;padding:7px 14px 7px 9px}
+ .jc .jc-hero .pts span::before{width:20px;height:20px;font-size:12px;margin-right:7px}
+ .jc .jc-hero .art{aspect-ratio:14/9}
+ .jc .jc-hero .art-w::before{display:none}
+ .jc .jc-hero .fb{font-size:14px;padding:11px 16px}
+}
