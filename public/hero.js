@@ -110,6 +110,13 @@
       ".jc-hero .art .jh-dots{padding:6px 4px}.jc-hero .art .jh-dots i{cursor:pointer;width:6px;height:6px;border-radius:50%;background:rgba(17,24,39,.25);transition:.3s}" +
       ".jc-hero .art .jh-dots i.on{width:18px;border-radius:3px;background:#1b4fe0}" +
       ".jc-hero .art .chip{z-index:2}" +
+      ".jc-hero .art img{-webkit-user-drag:none;user-select:none}" +
+      ".jc-hero .art .jh-nav{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:6px}" +
+      ".jc-hero .art .jh-nav .jh-dots{position:static;transform:none}" +
+      ".jc-hero .art .jh-arr{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:#0b1a3a;font-size:17px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.15);transition:transform .15s,background .15s}" +
+      ".jc-hero .art .jh-arr:hover{background:#1b4fe0;color:#fff;transform:scale(1.08)}" +
+      ".jc-hero .art.jh-drag{cursor:grabbing!important}" +
+      "@media(max-width:600px){.jc-hero .art .jh-arr{display:none}.jc-hero .art .jh-nav{top:6px}}" +
       "@media(max-width:600px){.jc-hero .art .jh-tag{right:10px;bottom:10px;font-size:12px;padding:6px 11px}}";
     document.head.appendChild(st);
   }
@@ -125,7 +132,14 @@
     art.insertBefore(b, im.nextSibling);
     var tag = document.createElement("a"); tag.className = "jh-tag"; art.appendChild(tag);
     var dots = document.createElement("div"); dots.className = "jh-dots";
-    if (L.length > 1) { L.forEach(function () { dots.appendChild(document.createElement("i")); }); art.appendChild(dots); }
+    var prev = document.createElement("button"), next = document.createElement("button");
+    if (L.length > 1) {
+      L.forEach(function () { dots.appendChild(document.createElement("i")); });
+      var nav = document.createElement("div"); nav.className = "jh-nav";
+      prev.type = next.type = "button"; prev.className = next.className = "jh-arr";
+      prev.innerHTML = "&#8249;"; next.innerHTML = "&#8250;"; prev.setAttribute("aria-label", "이전 차량"); next.setAttribute("aria-label", "다음 차량");
+      nav.appendChild(prev); nav.appendChild(dots); nav.appendChild(next); art.appendChild(nav);
+    }
 
     var k = -1, front = im, back = b, seq = 0, timer = null;
     function src(x) { return x.img + "?w=900"; }
@@ -133,7 +147,20 @@
       tag.href = "/allcar/?idx=" + x.idx;
       tag.innerHTML = x.b + " " + x.m + " <b>월 " + won(x.min) + "</b>";
       im.alt = back.alt = x.b + " " + x.m + " 장기렌트";
-      [].forEach.call(dots.children, function (d, i) { d.className = i === k ? "on" : ""; });
+      /* PC: 화살표 버튼 + 마우스 드래그로 넘기기, 마우스 올리면 자동넘김 일시정지 */
+    prev.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k - 1); restart(); });
+    next.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k + 1); restart(); });
+    var mx = null;
+    art.addEventListener("dragstart", function (e) { e.preventDefault(); });
+    art.addEventListener("mousedown", function (e) { if (e.button !== 0 || e.target.closest(".jh-nav,.jh-tag,.chip")) return; mx = e.clientX; });
+    window.addEventListener("mousemove", function (e) { if (mx !== null && Math.abs(e.clientX - mx) > 8) art.classList.add("jh-drag"); });
+    window.addEventListener("mouseup", function (e) {
+      if (mx === null) return; var dx = e.clientX - mx; mx = null; art.classList.remove("jh-drag");
+      if (L.length > 1 && Math.abs(dx) > 40) { swiped = true; setTimeout(function () { swiped = false; }, 400); goTo(k + (dx < 0 ? 1 : -1)); restart(); }
+    });
+    art.addEventListener("mouseenter", function () { if (timer) { clearInterval(timer); timer = null; } });
+    art.addEventListener("mouseleave", function () { mx = null; art.classList.remove("jh-drag"); restart(); });
+    [].forEach.call(dots.children, function (d, i) { d.className = i === k ? "on" : ""; });
     }
     function goTo(i) {
       k = (i + L.length) % L.length;
@@ -157,10 +184,23 @@
       var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
       if (L.length > 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) { swiped = true; setTimeout(function () { swiped = false; }, 400); goTo(k + (dx < 0 ? 1 : -1)); restart(); }
     }, { passive: true });
+    /* PC: 화살표 버튼 + 마우스 드래그로 넘기기, 마우스 올리면 자동넘김 일시정지 */
+    prev.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k - 1); restart(); });
+    next.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); goTo(k + 1); restart(); });
+    var mx = null;
+    art.addEventListener("dragstart", function (e) { e.preventDefault(); });
+    art.addEventListener("mousedown", function (e) { if (e.button !== 0 || e.target.closest(".jh-nav,.jh-tag,.chip")) return; mx = e.clientX; });
+    window.addEventListener("mousemove", function (e) { if (mx !== null && Math.abs(e.clientX - mx) > 8) art.classList.add("jh-drag"); });
+    window.addEventListener("mouseup", function (e) {
+      if (mx === null) return; var dx = e.clientX - mx; mx = null; art.classList.remove("jh-drag");
+      if (L.length > 1 && Math.abs(dx) > 40) { swiped = true; setTimeout(function () { swiped = false; }, 400); goTo(k + (dx < 0 ? 1 : -1)); restart(); }
+    });
+    art.addEventListener("mouseenter", function () { if (timer) { clearInterval(timer); timer = null; } });
+    art.addEventListener("mouseleave", function () { mx = null; art.classList.remove("jh-drag"); restart(); });
     [].forEach.call(dots.children, function (d, i) { d.addEventListener("click", function (e) { e.stopPropagation(); goTo(i); restart(); }); });
     art.addEventListener("click", function (e) {
       if (swiped) { swiped = false; e.preventDefault(); return; }
-      if (e.target.closest(".jh-tag") || e.target.closest(".chip")) return;
+      if (e.target.closest(".jh-tag") || e.target.closest(".chip") || e.target.closest(".jh-nav")) return;
       if (tag.href) location.href = tag.href;
     });
   }).catch(show);
