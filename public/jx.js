@@ -46,6 +46,12 @@ render(d)}).catch(function(e){console.warn("jx",e)});
 })();}
   else if(m.dataset.kind==="detail"){html(m,DHTML);(function(){
 /* 상세설명 템플릿 CSS 공통 적용 (에디터가 <style>을 지워도 유지) */
+/* 상세 하단 공통(HTML .jcb): CSS 로드 + 라인업을 실시간 차량 데이터로 채움 */
+(function jcb(n){var b=document.querySelector("#prod_detail_body .jcb");if(!b){if(n<25)setTimeout(function(){jcb(n+1)},400);return}if(b.getAttribute("data-on"))return;b.setAttribute("data-on","1");
+if(!document.getElementById("jx-desc-css")){var lk=document.createElement("link");lk.id="jx-desc-css";lk.rel="stylesheet";lk.href="https://jetcar-imweb-api.vercel.app/desc.css";document.head.appendChild(lk)}
+var box=b.querySelector(".jcb-cars");if(!box)return;var N=+box.getAttribute("data-n")||9;
+JX.load().then(function(d){var g={},a=[];(d.cars||[]).forEach(function(c){if(!c.img)return;var k=c.b+"|"+c.m,e=g[k];if(!e){e=g[k]={b:c.b,m:c.m,min:c.min,idx:c.idx,img:c.img,mi:c.mi};a.push(e)}if(c.min<e.min){e.min=c.min;e.idx=c.idx}if(c.mi>e.mi){e.mi=c.mi;e.img=c.img}});
+a.sort(function(x,y){return y.mi-x.mi});box.innerHTML=a.slice(0,N).map(function(x){return '<a class="jcb-car" href="/allcar/?idx='+x.idx+'"><span class="im"><img loading="lazy" src="'+x.img+'?w=500" alt="'+x.b+" "+x.m+' 장기렌트"></span><span class="bd"><span class="br">'+x.b+'</span><strong>'+x.m+'</strong><em>월 '+x.min.toLocaleString("ko-KR")+'원<small> ~</small></em></span></a>'}).join("")}).catch(function(){box.innerHTML='<a class="jcb-car" href="/allcar"><span class="bd"><strong>전체 차량 보기</strong></span></a>'})})(0);
 (function tpl(n){var el=document.querySelector("#prod_detail_body .hero,#prod_detail_body .car,#prod_detail_body .pcard");if(!el){if(n<20)setTimeout(function(){tpl(n+1)},300);return}el.closest("#prod_detail_body").classList.add("jx-tpl");if(!document.getElementById("jx-desc-css")){var lk=document.createElement("link");lk.id="jx-desc-css";lk.rel="stylesheet";lk.href="https://jetcar-imweb-api.vercel.app/desc.css";document.head.appendChild(lk)}})(0);
 var API="https://jetcar-imweb-api.vercel.app/api/cars";
 var idx=+(new URLSearchParams(location.search).get("idx")||0);if(!idx)return;
