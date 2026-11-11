@@ -82,11 +82,27 @@ async function crawlList(board) {
   return out;
 }
 
+// 자주하는질문: 페이지 전부 돌며 Q/A 쌍으로 수집
+async function crawlFaq() {
+  const qa = [], seen = new Set();
+  for (let pg = 1; pg <= 20; pg++) {
+    const html = await getText(`/bbs/faq.php?fm_id=1&page=${pg}`); if (!html) break;
+    const t = htmlText(html).replace(/\s+/g, ' ');
+    let added = 0;
+    for (const m of t.matchAll(/Q\s*([^Q]{4,200}?)\s*열기\s*([\s\S]{2,3000}?)\s*닫기/g)) {
+      const q = m[1].trim(); if (seen.has(q)) continue; seen.add(q); added++;
+      qa.push({ q, a: m[2].trim() });
+    }
+    if (!added) break;
+  }
+  return qa;
+}
+
 async function buildKB() {
   if (KB.t && Date.now() - KB.t < 60 * 60 * 1000) return KB;
   const [xbuf, faqHtml, svcHtml, ...lists] = await Promise.all([
     fetch(SITE + '/excel_cars_new.php', { headers: UA }).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null),
-    getText('/bbs/faq.php?fm_id=1'), getText('/jetcar/sub0103.php'),
+    crawlFaq(), getText('/jetcar/sub0103.php'),
     ...Object.values(BOARDS).map(b => crawlList(b).catch(() => []))
   ]);
   // ① 차량 LIST 엑셀 → 차량별 묶기 (차량명 있는 행이 새 차량, 아래 행은 개월별 조건)
@@ -110,7 +126,7 @@ async function buildKB() {
   }
   // ③④ 자주하는질문 · 서비스 소개 본문
   const cut = (t, from) => { let x = htmlText(t); const a = from ? x.indexOf(from) : -1; if (a >= 0) x = x.slice(a); const z = x.search(/개인정보처리방침 레이어|제트카 고객센터\s*1522|사업자등록번호/); return (z > 0 ? x.slice(0, z) : x).replace(/\s*열기\s*/g, '\n').replace(/\s*닫기\s*/g, '\n').replace(/\n\s*\n+/g, '\n').trim(); };
-  const faq = cut(faqHtml, '자주하는질문 목록').slice(0, 16000);
+  const faq = Array.isArray(faqHtml) ? faqHtml : [];
   const svc = cut(svcHtml, '서비스 소개').slice(0, 5000);
   // 차종 요약 (항상 포함)
   const S = {};
@@ -153,7 +169,15 @@ function pickVehicles(V, msgs) {
   return hit.sort((a, b) => a.min - b.min).slice(0, 60);
 }
 
-const SYSTEM = (kb, vehicles) => `당신은 장기렌트 회사 (주)제트카(JETCAR)의 AI 상담원입니다. 근거 자료는 제트카 공식 홈페이지(https://www.jetcar.co.kr) 내용입니다.
+function pickFaq(faq, msgs) {
+  const q = msgs.filter(m => m.role === 'user').slice(-2).map(m => m.parts[0].text).join(' ');
+  const grams = new Set(); const n = norm(q).replace(/[^가-힣a-z0-9]/g, '');
+  for (let i = 0; i < n.length - 1; i++) grams.add(n.slice(i, i + 2));      // 2글자 단위 겹침으로 관련도 계산
+  const sc = faq.map(x => { const t = norm(x.q) + ' ' + norm(x.q) + ' ' + norm(x.a); let s = 0; grams.forEach(g => { if (t.includes(g)) s++; }); return [x, s]; });
+  return sc.sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+}
+
+const SYSTEM = (kb, vehicles, faqs) => `당신은 장기렌트 회사 (주)제트카(JETCAR)의 AI 상담원입니다. 근거 자료는 제트카 공식 홈페이지(https://www.jetcar.co.kr) 내용입니다.
 규칙:
 1. 아래 [제트카 공식 홈페이지 자료]와 [고객이 보고 있는 페이지]에 있는 내용만 근거로 답합니다. 자료에 없는 조건·금액·정책은 추측하지 말고 "홈페이지에서 확인되지 않는 내용이라 상담사 확인이 필요합니다"라고 말한 뒤 전화(1522-3501)나 카카오톡 상담을 안내합니다.
 2. 한국어 존댓말, 짧고 친절하게(보통 3~6줄). 목록이 필요하면 "- "로 시작하는 줄을 씁니다. 강조는 **굵게**.
@@ -173,11 +197,14 @@ ${vehicles.map(vline).join('\n')}
 [서비스 소개 ${SITE}/jetcar/sub0103.php]
 ${kb.svc}
 
-[자주하는질문 ${SITE}/bbs/faq.php]
-${kb.faq}`;
+[자주하는질문 ${SITE}/bbs/faq.php?fm_id=1 — 질문과 관련 높은 항목]
+${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}
+
+[자주하는질문 전체 목록(제목) — 위에 답이 없으면 아래 제목만 참고하고 상담 안내]
+${kb.faq.map(x => '· ' + x.q).join('\n')}`;
 
 // 내부 생각(thinking) 최소화: 응답 속도·출력 토큰 절약. 모델이 설정을 거부(400)하면 설정 없이 재시도
-const THINK = m => /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: 'minimal' };
+const THINK = m => /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
 let LASTINFO = {};
 async function gemini(key, system, contents) {
   let last = '';
@@ -226,8 +253,9 @@ module.exports = async (req, res) => {
     if (req.query && req.query.kb) {
       const k = await buildKB(); const q = String(req.query.q || '');
       const vs = pickVehicles(k.V, [{ role: 'user', parts: [{ text: q }] }]);
-      const sys = SYSTEM(k, vs);
-      return res.status(200).json({ ready: !!key, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqLen: k.faq.length, svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline) });
+      const fq = pickFaq(k.faq, [{ role: 'user', parts: [{ text: q }] }]);
+      const sys = SYSTEM(k, vs, fq);
+      return res.status(200).json({ ready: !!key, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqN: k.faq.length, faqPicked: fq.slice(0, 5).map(x => x.q), svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline) });
     }
     return res.status(200).json({ ok: true, ready: !!key });
   }
@@ -243,9 +271,10 @@ module.exports = async (req, res) => {
     if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return res.status(400).json({ error: 'no message' });
     const kb = await buildKB();
     const vehicles = pickVehicles(kb.V, msgs);
+    const faqs = pickFaq(kb.faq, msgs);
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
-    const reply = await gemini(key, SYSTEM(kb, vehicles) + pageCtx, msgs);
+    const reply = await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
     res.status(200).json(body.debug ? { reply, info: LASTINFO } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
