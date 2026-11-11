@@ -313,12 +313,19 @@ module.exports = async (req, res) => {
     const faqs = pickFaq(kb.faq, msgs);
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
-    const reply = PROVIDER === 'claude'
-      ? await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs)
-      : await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
-    res.status(200).json(body.debug ? { reply, info: LASTINFO } : { reply });
+    let reply, fallback;
+    if (PROVIDER === 'claude') {
+      // Claude 실패 시 Gemini 키가 있으면 자동 대체 → 고객에게 오류 화면 최소화
+      try { reply = await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs); }
+      catch (e) {
+        if (!process.env.GEMINI_API_KEY) throw e;
+        console.error('claude fail → gemini', String(e)); fallback = String(e).slice(0, 300);
+        reply = await gemini(process.env.GEMINI_API_KEY, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
+      }
+    } else reply = await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
+    res.status(200).json(body.debug ? { reply, info: LASTINFO, fallback } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
-    res.status(502).json({ error: 'AI', reply: '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
+    res.status(502).json({ error: 'AI', detail: req.body && req.body.debug ? String(e).slice(0, 300) : undefined, reply: '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
   }
 };
