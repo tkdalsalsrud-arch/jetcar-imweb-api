@@ -94,7 +94,7 @@ async function buildKB() {
   if (xbuf) {
     const rows = readXlsx(Buffer.from(xbuf)).slice(1);
     for (const r of rows) {
-      if (r[2]) { cur = { name: r[2].replace(/\s+/g, ' ').trim(), opt: (r[3] || '').trim(), kind: r[4], color: r[5], fuel: r[6], ym: r[7], km: r[8], T: [] }; V.push(cur); }
+      if (r[2]) { cur = { name: r[2].replace(/\s+/g, ' ').trim(), opt: (r[3] || '').replace(/\s+/g, ' ').trim(), kind: r[4], color: r[5], fuel: r[6], ym: r[7], km: r[8], T: [] }; V.push(cur); }
       if (cur && r[9]) cur.T.push({ m: +r[9], dep: r[10], rent: +String(r[11]).replace(/[^\d]/g, '') });
     }
   }
@@ -115,7 +115,7 @@ async function buildKB() {
   // 차종 요약 (항상 포함)
   const S = {};
   for (const v of V) {
-    const model = v.name.replace(/^(the\s*20\d\d|더\s*뉴|디\s*올\s*뉴|올\s*뉴|디\s*올뉴|더뉴|올뉴|뉴)\s*/i, '').split(/\s|\(/)[0];
+    const model = modelOf(v.name);
     const key = v.kind + '|' + model; const s = S[key] || (S[key] = { kind: v.kind, model, n: 0, min: Infinity });
     s.n++; if (v.min < s.min) s.min = v.min;
   }
@@ -125,6 +125,13 @@ async function buildKB() {
   return KB;
 }
 
+const PRE = /^(the|20\d\d(년형)?|더|뉴|디|올|올뉴|더뉴|디올뉴|신형|현대|기아|제네시스|르노|르노코리아|kgm|kg|쉐보레|테슬라|byd|벤츠|bmw|아우디|폭스바겐)$/i;
+function modelOf(name) {
+  const t = name.replace(/\(.*?\)/g, ' ').split(/\s+/).filter(Boolean);
+  while (t.length > 1 && PRE.test(t[0])) t.shift();
+  if (t.length > 1 && /^(그랑|트레일|싼타|더블|올뉴)$/.test(t[0])) t.splice(0, 2, t[0] + t[1]);
+  return t[0].replace(/^(더뉴|디올뉴|올뉴|뉴)/, '') || t[0];
+}
 const vline = v => `- [${v.kind}] ${v.name}${v.opt ? ' (옵션: ' + v.opt.slice(0, 60) + ')' : ''} | ${[v.color, v.fuel, v.ym, v.km].filter(Boolean).join(' · ')} | ${v.T.map(t => `${t.m}개월 보증금${won(String(t.dep).match(/^\d{1,4}$/) ? t.dep * 10000 : t.dep)}·월${won(t.rent)}`).join(', ')} | 링크: ${v.url}`;
 
 // 질문과 관련된 차량만 골라 상세 행으로 (차종·연료·구분 단어 매칭, 없으면 저렴한 순 일부)
@@ -132,7 +139,12 @@ function pickVehicles(V, msgs) {
   const q = msgs.filter(m => m.role === 'user').slice(-3).map(m => m.parts[0].text).join(' ');
   const toks = (q.match(/[가-힣A-Za-z0-9]{2,}/g) || []).map(norm).filter(t => !/^(가능|있나요|얼마|어떻게|궁금|문의|추천|저렴|싼차|차량|장기렌트|렌트|월|보증금|개월)/.test(t));
   const fuelMap = { 하이브리드: '하이브리드', 전기: '전기', 전기차: '전기', lpg: 'lpg', 디젤: '경유', 경유: '경유', 가솔린: '휘발유', 휘발유: '휘발유' };
-  let hit = V.filter(v => { const n = norm(v.name); return toks.some(t => t.length >= 2 && n.includes(t)); });
+  // 질문 단어가 차량명에 많이 들어간 차부터 (예: 'K8 하이브리드' → K8 하이브리드 우선, 없으면 K8 전체)
+  const sc = V.map(v => { const n = norm(v.name); return [v, toks.filter(t => n.includes(t)).length, toks.some(t => norm(modelOf(v.name)) === t || (t.length >= 2 && norm(modelOf(v.name)).includes(t)))]; });
+  const best = Math.max(0, ...sc.map(x => x[1]));
+  const modelHit = sc.filter(x => x[2]);
+  let hit = best ? sc.filter(x => x[1] === best).map(x => x[0]) : [];
+  if (modelHit.length && !hit.some(v => modelHit.find(x => x[0] === v))) hit = modelHit.map(x => x[0]);
   const kinds = ['신차', '중고차', '중고', '화물차', '화물', '트럭'].filter(k => q.includes(k)).map(k => k === '중고' ? '중고차' : (k === '화물' || k === '트럭') ? '화물차' : k);
   const fuels = Object.keys(fuelMap).filter(k => norm(q).includes(k)).map(k => fuelMap[k]);
   if (kinds.length) hit = (hit.length ? hit : V).filter(v => kinds.includes(v.kind));
