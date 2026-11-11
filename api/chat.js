@@ -46,7 +46,7 @@ async function buildKB() {
   });
   KB = {
     t: Date.now(), carsN: cars.length,
-    text: `[현재 홈페이지 등록 차량 ${cars.length}종 — 월 대여료(VAT 포함 표시가), 보증금·재고는 상담 시 확인]\n${lines.join('\n')}\n\n[자주묻는질문 페이지 ${SITE}/contact]\n${faq}\n${COMMON}`
+    text: `[현재 홈페이지 등록 차량 ${cars.length}종 — 홈페이지 표시 월 대여료, 보증금·재고는 상담 시 확인]\n${lines.join('\n')}\n\n[자주묻는질문 페이지 ${SITE}/contact]\n${faq}\n${COMMON}`
   };
   return KB;
 }
