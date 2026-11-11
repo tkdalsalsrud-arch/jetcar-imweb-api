@@ -169,12 +169,18 @@ function pickVehicles(V, msgs) {
   return hit.sort((a, b) => a.min - b.min).slice(0, 60);
 }
 
-function pickFaq(faq, msgs) {
-  const q = msgs.filter(m => m.role === 'user').slice(-2).map(m => m.parts[0].text).join(' ');
-  const grams = new Set(); const n = norm(q).replace(/[^가-힣a-z0-9]/g, '');
+function faqRank(faq, text) {
+  const grams = new Set(); const n = norm(text).replace(/[^가-힣a-z0-9]/g, '');
   for (let i = 0; i < n.length - 1; i++) grams.add(n.slice(i, i + 2));      // 2글자 단위 겹침으로 관련도 계산
-  const sc = faq.map(x => { const t = norm(x.q) + ' ' + norm(x.q) + ' ' + norm(x.a); let s = 0; grams.forEach(g => { if (t.includes(g)) s++; }); return [x, s]; });
-  return sc.sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+  return faq.map(x => { const t = norm(x.q) + ' ' + norm(x.q) + ' ' + norm(x.a); let s = 0; grams.forEach(g => { if (t.includes(g)) s++; }); return [x, s]; })
+    .sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+// 이번 질문 관련 8개 + 직전 질문들(최대 3개) 관련 각 4개 → 앞서 근거로 쓴 FAQ가 다음 턴에 빠져 '정정'하는 오류 방지
+function pickFaq(faq, msgs) {
+  const us = msgs.filter(m => m.role === 'user').map(m => m.parts[0].text);
+  const out = new Set(faqRank(faq, us[us.length - 1] || '').slice(0, 8));
+  us.slice(-4, -1).reverse().forEach(t => faqRank(faq, t).slice(0, 4).forEach(x => out.add(x)));
+  return [...out].slice(0, 18);
 }
 
 // 프롬프트를 고정부(규칙·차종 요약·서비스 소개·FAQ 제목 — 1시간 동안 동일 → 캐시)와 질문별 부분(관련 차량·FAQ 답변·보는 페이지)으로 나눔
@@ -188,6 +194,7 @@ const SYS_STATIC = kb => `당신은 장기렌트 회사 (주)제트카(JETCAR)�
 6. 주민등록번호·카드번호·계좌번호 같은 개인정보는 요청하지도 받지도 않습니다. 고객이 보내면 상담사에게 직접 전달하라고 안내합니다.
 7. 제트카와 무관한 질문은 정중히 장기렌트 상담으로 돌립니다.
 8. 상담 연결: 전화 1522-3501 / 카카오톡 https://pf.kakao.com/_aQmWd
+9. 앞선 답변을 스스로 정정하는 것은 자료와 명백히 어긋날 때만 합니다. 이번 자료에 해당 내용이 안 보인다는 이유만으로 정정하지 않습니다.
 
 [제트카 공식 홈페이지 자료 — 실시간]
 [전체 차종 요약 — 차량 LIST 기준 ${kb.V.length}대] ${kb.summary}
@@ -224,7 +231,8 @@ async function claude(key, sysStatic, sysDynamic, msgs) {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: CLAUDE_MODEL, max_tokens: 1000,
+      model: CLAUDE_MODEL, max_tokens: 1500,
+      output_config: { effort: process.env.CLAUDE_EFFORT || 'low' },   // 내부 생각 최소화(응답 속도·비용). medium/high로 올릴 수 있음
       system: [
         { type: 'text', text: sysStatic, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: sysDynamic }
