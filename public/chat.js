@@ -1,5 +1,5 @@
 /* 제트카 AI 상담 챗봇 위젯 — 우측 하단 (카카오톡 상담 버튼 위)
-   API: https://jetcar-imweb-api.vercel.app/api/chat  (GEMINI_API_KEY 설정 시에만 버튼 노출, ?aichat=1 로 미리보기) */
+   API: https://jetcar-imweb-api.vercel.app/api/chat  (ANTHROPIC_API_KEY 또는 GEMINI_API_KEY 설정 시에만 버튼 노출, ?aichat=1 로 미리보기) */
 (function () {
   if (window.__JCHAT) return; window.__JCHAT = 1;
   if (/\/admin/.test(location.pathname)) return;

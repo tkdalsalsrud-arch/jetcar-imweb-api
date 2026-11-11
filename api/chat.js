@@ -7,7 +7,7 @@
 //   ③ 자주하는질문 /bbs/faq.php?fm_id=1   ④ 서비스 소개 /jetcar/sub0103.php
 //   ⑤ 고객이 보고 있는 페이지 본문(위젯이 전송)
 // 질문과 관련된 차량만 상세 행으로 넣고(토큰 절약), 나머지는 차종 요약으로 제공
-// 환경변수: GEMINI_API_KEY (필수), GEMINI_MODEL (선택)
+// 환경변수: ANTHROPIC_API_KEY (Claude, 기본) / CLAUDE_MODEL (기본 claude-sonnet-5-5) / GEMINI_API_KEY·GEMINI_MODEL (예비) / CHAT_PROVIDER (claude|gemini 강제)
 const zlib = require('zlib');
 
 const SITE = 'https://www.jetcar.co.kr';
@@ -177,10 +177,11 @@ function pickFaq(faq, msgs) {
   return sc.sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
 }
 
-const SYSTEM = (kb, vehicles, faqs) => `당신은 장기렌트 회사 (주)제트카(JETCAR)의 AI 상담원입니다. 근거 자료는 제트카 공식 홈페이지(https://www.jetcar.co.kr) 내용입니다.
+// 프롬프트를 고정부(규칙·차종 요약·서비스 소개·FAQ 제목 — 1시간 동안 동일 → 캐시)와 질문별 부분(관련 차량·FAQ 답변·보는 페이지)으로 나눔
+const SYS_STATIC = kb => `당신은 장기렌트 회사 (주)제트카(JETCAR)의 AI 상담원입니다. 근거 자료는 제트카 공식 홈페이지(https://www.jetcar.co.kr) 내용입니다.
 규칙:
 1. 아래 [제트카 공식 홈페이지 자료]와 [고객이 보고 있는 페이지]에 있는 내용만 근거로 답합니다. 자료에 없는 조건·금액·정책은 추측하지 말고 "홈페이지에서 확인되지 않는 내용이라 상담사 확인이 필요합니다"라고 말한 뒤 전화(1522-3501)나 카카오톡 상담을 안내합니다.
-2. 한국어 존댓말, 짧고 친절하게(보통 3~6줄). 목록이 필요하면 "- "로 시작하는 줄을 씁니다. 강조는 **굵게**.
+2. 한국어 존댓말, 짧고 친절하게(보통 3~6줄). 목록이 필요하면 "- "로 시작하는 줄을 씁니다. 강조는 **굵게**. 표·제목(#)은 쓰지 않습니다.
 3. 차량을 안내할 때는 차량명·구분(신차/중고차/화물차)·월 렌트비·보증금을 쓰고 [차량명](링크) 형식으로 홈페이지 링크를 붙입니다. 금액은 자료 그대로 "~부터"로, 최대 5대까지. 차량번호는 알려주지 않습니다.
 4. [관련 차량 상세]에 없는 차는 [전체 차종 요약]으로 답하고, 자세한 조건은 해당 목록 페이지(신차 ${SITE}/sub0201, 중고 ${SITE}/sub0301, 화물차 ${SITE}/sub0701)나 상담으로 안내합니다.
 5. 심사 승인·출고 일정·최종 금액을 확정해서 약속하지 않습니다. 최종 조건은 상담사가 안내한다고 말합니다.
@@ -191,17 +192,53 @@ const SYSTEM = (kb, vehicles, faqs) => `당신은 장기렌트 회사 (주)제�
 [제트카 공식 홈페이지 자료 — 실시간]
 [전체 차종 요약 — 차량 LIST 기준 ${kb.V.length}대] ${kb.summary}
 
-[관련 차량 상세 — 개월별 보증금·월 렌트비]
-${vehicles.map(vline).join('\n')}
-
 [서비스 소개 ${SITE}/jetcar/sub0103.php]
 ${kb.svc}
 
-[자주하는질문 ${SITE}/bbs/faq.php?fm_id=1 — 질문과 관련 높은 항목]
-${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}
-
-[자주하는질문 전체 목록(제목) — 위에 답이 없으면 아래 제목만 참고하고 상담 안내]
+[자주하는질문 전체 목록(제목) — 아래 '관련 높은 항목'에 답이 없으면 제목만 참고하고 상담 안내]
 ${kb.faq.map(x => '· ' + x.q).join('\n')}`;
+
+const SYS_DYNAMIC = (vehicles, faqs) => `[관련 차량 상세 — 개월별 보증금·월 렌트비]
+${vehicles.map(vline).join('\n')}
+
+[자주하는질문 ${SITE}/bbs/faq.php?fm_id=1 — 이번 질문과 관련 높은 항목]
+${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}`;
+
+const SYSTEM = (kb, vehicles, faqs) => SYS_STATIC(kb) + '\n\n' + SYS_DYNAMIC(vehicles, faqs);
+
+/* ── Claude (Anthropic Messages API) ── 기본 사용. 고정부에 prompt caching 적용 */
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
+// Claude 규칙: 첫 메시지는 user, user/assistant 번갈아 → 앞쪽 assistant 제거, 같은 역할 연속은 합침
+function toClaude(msgs) {
+  const out = [];
+  for (const m of msgs) {
+    const role = m.role === 'model' ? 'assistant' : 'user', text = m.parts[0].text;
+    if (!out.length && role === 'assistant') continue;
+    if (out.length && out[out.length - 1].role === role) out[out.length - 1].content += '\n' + text;
+    else out.push({ role, content: text });
+  }
+  return out;
+}
+async function claude(key, sysStatic, sysDynamic, msgs) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL, max_tokens: 1000, temperature: 0.3,
+      system: [
+        { type: 'text', text: sysStatic, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: sysDynamic }
+      ],
+      messages: toClaude(msgs)
+    })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(r.status + ' ' + ((j.error && j.error.message) || ''));
+  const txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+  LASTINFO = { provider: 'claude', model: j.model || CLAUDE_MODEL, stop: j.stop_reason, usage: j.usage };
+  if (!txt) throw new Error('empty ' + j.stop_reason);
+  return txt;
+}
 
 // 내부 생각(thinking) 최소화: 응답 속도·출력 토큰 절약. 모델이 설정을 거부(400)하면 설정 없이 재시도
 const THINK = m => /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
@@ -220,7 +257,7 @@ async function gemini(key, system, contents) {
       if (r.ok) {
         const c = (j.candidates || [])[0] || {};
         const txt = ((c.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join('').trim();
-        LASTINFO = { model, thinkingOff: !!gc.thinkingConfig, finish: c.finishReason, usage: j.usageMetadata };
+        LASTINFO = { provider: 'gemini', model, thinkingOff: !!gc.thinkingConfig, finish: c.finishReason, usage: j.usageMetadata };
         if (txt) return txt;
         last = 'empty ' + c.finishReason; break;
       }
@@ -248,16 +285,18 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'content-type');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  const key = process.env.GEMINI_API_KEY;
+  // 사용할 AI: CHAT_PROVIDER(claude|gemini) 지정 없으면 Claude 키가 있으면 Claude, 없으면 Gemini
+  const PROVIDER = process.env.CHAT_PROVIDER || (process.env.ANTHROPIC_API_KEY ? 'claude' : 'gemini');
+  const key = PROVIDER === 'claude' ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
   if (req.method === 'GET') {
     if (req.query && req.query.kb) {
       const k = await buildKB(); const q = String(req.query.q || '');
       const vs = pickVehicles(k.V, [{ role: 'user', parts: [{ text: q }] }]);
       const fq = pickFaq(k.faq, [{ role: 'user', parts: [{ text: q }] }]);
       const sys = SYSTEM(k, vs, fq);
-      return res.status(200).json({ ready: !!key, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqN: k.faq.length, faqPicked: fq.slice(0, 5).map(x => x.q), svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline) });
+      return res.status(200).json({ ready: !!key, provider: PROVIDER, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqN: k.faq.length, faqPicked: fq.slice(0, 5).map(x => x.q), svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline) });
     }
-    return res.status(200).json({ ok: true, ready: !!key });
+    return res.status(200).json({ ok: true, ready: !!key, provider: PROVIDER });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'method' });
   if (!key) return res.status(503).json({ error: 'NO_KEY', reply: 'AI 상담 준비 중입니다. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
@@ -274,7 +313,9 @@ module.exports = async (req, res) => {
     const faqs = pickFaq(kb.faq, msgs);
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
-    const reply = await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
+    const reply = PROVIDER === 'claude'
+      ? await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs)
+      : await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
     res.status(200).json(body.debug ? { reply, info: LASTINFO } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
