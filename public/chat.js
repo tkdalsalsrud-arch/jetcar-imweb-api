@@ -44,6 +44,7 @@
     });
     s = s.replace(/(^|[\s(])(https:\/\/pf\.kakao\.com\/_aQmWd)/g, '$1<a href="$2" target="_blank" rel="noopener">카카오톡 상담</a>');
     s = s.replace(/1522-3501/g, '<a href="' + TEL + '">1522-3501</a>');
+    s = s.replace(/1661-7977/g, '<a href="tel:16617977">1661-7977</a>');
     return s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
   }
   function load() { try { return JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) { return []; } }
@@ -73,9 +74,9 @@
       d.innerHTML = role === "user" ? esc(text) : md(text); box.appendChild(d); box.scrollTop = box.scrollHeight; return d;
     }
     function greet() {
-      add("model", "안녕하세요, **제트카 AI 상담**입니다.\n차량·대여료·이용 조건·계약 절차 등 궁금한 점을 물어보세요.");
+      add("model", "안녕하세요, **제트카 AI 상담**입니다.\n차량·대여료·계약 절차, 이용 중 사고·긴급출동까지 궁금한 점을 물어보세요.");
       var q = document.createElement("div"); q.className = "jch-q";
-      ["신용이 안 좋아도 가능한가요?", "보증금은 얼마인가요?", "지금 제일 저렴한 차는?", "계약 절차가 궁금해요"].forEach(function (t) {
+      ["신용이 안 좋아도 가능한가요?", "보증금은 얼마인가요?", "지금 제일 저렴한 차는?", "계약 절차가 궁금해요", "사고가 났어요"].forEach(function (t) {
         var b = document.createElement("button"); b.type = "button"; b.textContent = t;
         b.onclick = function () { q.remove(); ask(t); }; q.appendChild(b);
       });
