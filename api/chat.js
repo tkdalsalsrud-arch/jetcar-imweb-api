@@ -192,7 +192,7 @@ const SYS_STATIC = kb => `당신은 장기렌트 회사 (주)제트카(JETCAR)�
 4. [관련 차량 상세]에 없는 차는 [전체 차종 요약]으로 답하고, 자세한 조건은 해당 목록 페이지(신차 ${SITE}/sub0201, 중고 ${SITE}/sub0301, 화물차 ${SITE}/sub0701)나 상담으로 안내합니다.
 5. 심사 승인·출고 일정·최종 금액을 확정해서 약속하지 않습니다. 최종 조건은 상담사가 안내한다고 말합니다.
 6. 주민등록번호·카드번호·계좌번호 같은 개인정보는 요청하지도 받지도 않습니다. 고객이 보내면 상담사에게 직접 전달하라고 안내합니다.
-7. 제트카와 무관한 질문은 정중히 장기렌트 상담으로 돌립니다.
+7. 제트카와 무관한 질문은 정중히 장기렌트 상담으로 돌립니다. 이용 중 사고·파손·긴급출동 질문은 제트카 질문이므로 답합니다.
 8. 상담 연결: 전화 1522-3501 / 카카오톡 https://pf.kakao.com/_aQmWd
 9. 앞선 답변을 스스로 정정하는 것은 자료와 명백히 어긋날 때만 합니다. 이번 자료에 해당 내용이 안 보인다는 이유만으로 정정하지 않습니다.
 
@@ -211,7 +211,22 @@ ${vehicles.map(vline).join('\n')}
 [자주하는질문 ${SITE}/bbs/faq.php?fm_id=1 — 이번 질문과 관련 높은 항목]
 ${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}`;
 
-const SYSTEM = (kb, vehicles, faqs) => SYS_STATIC(kb) + '\n\n' + SYS_DYNAMIC(vehicles, faqs);
+/* ── 사고·보험·긴급출동 안내 = 사고담당 카카오톡 챗봇(jetcar-chatbot1)의 고정 안내 카드 ──
+   data/accident_kb.json은 scripts/build_accident_kb.mjs로 생성(사고담당 챗봇 내용이 바뀌면 다시 생성·배포)
+   대화에 사고 관련 단어가 있을 때만 프롬프트에 넣음(별도 캐시 블록) → 일반 상담은 비용 증가 없음 */
+let ACC = null; try { ACC = require('../data/accident_kb.json'); } catch (e) { console.error('accident_kb 없음', String(e)); }
+const ACC_RE = /사고|면책|자기 ?부담|할증|보험 ?처리|자차|대물|대인|자손|긴급 ?출동|출동|견인|렉카|레커|방전|배터리|밧데리|시동|타이어|펑크|빵꾸|정비|공업사|카센터|수리|입고|파손|기스|스크래치|긁|흠집|찌그러|문콕|돌빵|유리|경고등|대차|블랙박스|블박|과실|뺑소니|물피|침수|태풍|홍수|도난|도둑|음주|무면허|운전자|운전 ?자격|원데이|1일 ?보험|접수|청구서|전손|폐차|다쳤|부상|부딪|박았|추돌|접촉|충돌|공제조합|1661/;
+const isAccident = msgs => !!ACC && msgs.filter(m => m.role === 'user').slice(-4).some(m => ACC_RE.test(m.parts[0].text));
+const SYS_ACCIDENT = () => !ACC ? '' : `[사고·보험·긴급출동 안내 — 제트카 사고담당 카카오톡 챗봇의 공식 안내 내용]
+사고·파손·보험처리·면책금·긴급출동·정비업체·대차 질문은 아래 내용만 근거로 답합니다. 홈페이지 FAQ와 다르면 이 안내가 우선입니다.
+기본 원칙:
+${ACC.rules.split('\n').filter(l => !/카카오톡 모바일|마크다운 금지/.test(l)).join('\n')}
+- 사고 직후라면 안전 확보 → 렌트카공제조합 1661-7977 접수(ARS 1번 사고, 2번 긴급출동) → 제트카 1522-3501 순서를 먼저 안내합니다.
+- 다친 사람이 있으면 119 신고가 가장 먼저입니다.
+
+${ACC.cards.map(c => '■ ' + c.text).join('\n\n')}`;
+
+const SYSTEM = (kb, vehicles, faqs, acc) => SYS_STATIC(kb) + (acc ? '\n\n' + SYS_ACCIDENT() : '') + '\n\n' + SYS_DYNAMIC(vehicles, faqs);
 
 /* ── Claude (Anthropic Messages API) ── 기본 사용. 고정부에 prompt caching 적용 */
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
@@ -226,7 +241,7 @@ function toClaude(msgs) {
   }
   return out;
 }
-async function claude(key, sysStatic, sysDynamic, msgs) {
+async function claude(key, sysStatic, sysDynamic, msgs, sysAcc) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
@@ -235,6 +250,7 @@ async function claude(key, sysStatic, sysDynamic, msgs) {
       output_config: { effort: process.env.CLAUDE_EFFORT || 'low' },   // 내부 생각 최소화(응답 속도·비용). medium/high로 올릴 수 있음
       system: [
         { type: 'text', text: sysStatic, cache_control: { type: 'ephemeral' } },
+        ...(sysAcc ? [{ type: 'text', text: sysAcc, cache_control: { type: 'ephemeral' } }] : []),   // 사고 대화일 때만, 캐시
         { type: 'text', text: sysDynamic }
       ],
       messages: toClaude(msgs)
@@ -319,19 +335,20 @@ module.exports = async (req, res) => {
     const kb = await buildKB();
     const vehicles = pickVehicles(kb.V, msgs);
     const faqs = pickFaq(kb.faq, msgs);
+    const acc = isAccident(msgs);
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
     let reply, fallback;
     if (PROVIDER === 'claude') {
       // Claude 실패 시 Gemini 키가 있으면 자동 대체 → 고객에게 오류 화면 최소화
-      try { reply = await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs); }
+      try { reply = await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs, acc ? SYS_ACCIDENT() : ''); }
       catch (e) {
         if (!process.env.GEMINI_API_KEY) throw e;
         console.error('claude fail → gemini', String(e)); fallback = String(e).slice(0, 300);
-        reply = await gemini(process.env.GEMINI_API_KEY, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
+        reply = await gemini(process.env.GEMINI_API_KEY, SYSTEM(kb, vehicles, faqs, acc) + pageCtx, msgs);
       }
-    } else reply = await gemini(key, SYSTEM(kb, vehicles, faqs) + pageCtx, msgs);
-    res.status(200).json(body.debug ? { reply, info: LASTINFO, fallback } : { reply });
+    } else reply = await gemini(key, SYSTEM(kb, vehicles, faqs, acc) + pageCtx, msgs);
+    res.status(200).json(body.debug ? { reply, info: LASTINFO, fallback, accident: acc } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
     res.status(502).json({ error: 'AI', detail: req.body && req.body.debug ? String(e).slice(0, 300) : undefined, reply: '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
