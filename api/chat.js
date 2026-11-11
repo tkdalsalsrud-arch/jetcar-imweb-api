@@ -176,23 +176,32 @@ ${kb.svc}
 [자주하는질문 ${SITE}/bbs/faq.php]
 ${kb.faq}`;
 
+// 내부 생각(thinking) 최소화: 응답 속도·출력 토큰 절약. 모델이 설정을 거부(400)하면 설정 없이 재시도
+const THINK = m => /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: 'minimal' };
+let LASTINFO = {};
 async function gemini(key, system, contents) {
   let last = '';
   for (const model of MODELS) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 900 } })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) {
-      const t = (((j.candidates || [])[0] || {}).content || {}).parts;
-      const txt = (t || []).map(p => p.text || '').join('').trim();
-      if (txt) return txt;
-      last = 'empty'; continue;
+    for (const think of [true, false]) {
+      const gc = { temperature: 0.3, maxOutputTokens: 1500 };
+      if (think && process.env.GEMINI_THINKING !== 'on') gc.thinkingConfig = THINK(model);
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: gc })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        const c = (j.candidates || [])[0] || {};
+        const txt = ((c.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join('').trim();
+        LASTINFO = { model, thinkingOff: !!gc.thinkingConfig, finish: c.finishReason, usage: j.usageMetadata };
+        if (txt) return txt;
+        last = 'empty ' + c.finishReason; break;
+      }
+      last = r.status + ' ' + ((j.error && j.error.message) || '');
+      if (r.status === 400 && think && gc.thinkingConfig) continue;   // 생각 설정 미지원 → 설정 없이 재시도
+      break;
     }
-    last = r.status + ' ' + ((j.error && j.error.message) || '');
-    if (r.status !== 404 && r.status !== 400) break; // 모델 없음일 때만 다음 모델 시도
+    if (!/^(404|400)/.test(last)) break;                                 // 모델 없음일 때만 다음 모델
   }
   throw new Error(last);
 }
@@ -237,7 +246,7 @@ module.exports = async (req, res) => {
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
     const reply = await gemini(key, SYSTEM(kb, vehicles) + pageCtx, msgs);
-    res.status(200).json({ reply });
+    res.status(200).json(body.debug ? { reply, info: LASTINFO } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
     res.status(502).json({ error: 'AI', reply: '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
