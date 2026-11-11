@@ -224,7 +224,7 @@ async function claude(key, sysStatic, sysDynamic, msgs) {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: CLAUDE_MODEL, max_tokens: 1000, temperature: 0.3,
+      model: CLAUDE_MODEL, max_tokens: 1000,
       system: [
         { type: 'text', text: sysStatic, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: sysDynamic }
