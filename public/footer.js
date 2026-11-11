@@ -1,6 +1,8 @@
 /* 제트카 사이트 하단(푸터) 디자인 — 아임웹 푸터 텍스트를 읽어 재배치 (내용 수정은 아임웹 디자인모드 푸터에서) */
 (function () {
   if (window.__JF) return; window.__JF = 1;
+  /* AI 상담 챗봇 위젯 (우측 하단) */
+  if (!document.getElementById("jch-js")) { var _c = document.createElement("script"); _c.id = "jch-js"; _c.src = "https://jetcar-imweb-api.vercel.app/chat.js"; _c.async = true; document.head.appendChild(_c); }
   var LOGO = "https://cdn.imweb.me/thumbnail/20261026/523a442fcced0.jpg";
   var KAKAO = "https://pf.kakao.com/_aQmWd";
   var KICON = "https://cdn.imweb.me/upload/S202511130fc0ff58a5b6b/f1eb0408cff94.png";
