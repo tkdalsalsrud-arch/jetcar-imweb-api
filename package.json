@@ -1,1 +1,1 @@
-{ "name": "jetcar-imweb-api", "version": "1.0.0", "private": true, "engines": { "node": ">=18" } }
+{ "name": "jetcar-imweb-api", "version": "1.0.0", "private": true, "engines": { "node": ">=18" }, "dependencies": { "@vercel/blob": "^2.9.0" } }

@@ -1,5 +1,6 @@
 /* 제트카 AI 상담 챗봇 위젯 — 우측 하단 (카카오톡 상담 버튼 위)
-   API: https://jetcar-imweb-api.vercel.app/api/chat  (ANTHROPIC_API_KEY 또는 GEMINI_API_KEY 설정 시에만 버튼 노출, ?aichat=1 로 미리보기) */
+   API: https://jetcar-imweb-api.vercel.app/api/chat  (ANTHROPIC_API_KEY 설정 시에만 버튼 노출, ?aichat=1 로 미리보기)
+   답변은 스트리밍(text/event-stream)으로 받아 글자가 나오는 대로 표시. 스트리밍 미지원 브라우저는 한 번에 받음 */
 (function () {
   if (window.__JCHAT) return; window.__JCHAT = 1;
   if (/\/admin/.test(location.pathname)) return;
@@ -89,10 +90,47 @@
       hist.push({ role: "user", text: text }); save(hist); add("user", text);
       busy = true; send.disabled = true;
       var t = document.createElement("div"); t.className = "jch-m a t"; t.innerHTML = "답변을 준비하고 있어요<span>.</span><span>.</span><span>.</span>"; box.appendChild(t); box.scrollTop = box.scrollHeight;
-      fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: hist, page: pageCtx() }) })
-        .then(function (r) { return r.json(); })
-        .then(function (j) { var r = j.reply || "지금은 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요."; t.remove(); hist.push({ role: "model", text: r }); save(hist); add("model", r); })
-        .catch(function () { t.remove(); add("model", "연결이 원활하지 않아요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요."); })
+      var FAIL = "지금은 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.";
+      var acc = "", d = null, broken = false, gotEnd = false;
+      var canStream = !!(window.ReadableStream && window.TextDecoder);
+      // 아래쪽을 보고 있을 때만 자동 스크롤 (고객이 위로 올려 읽는 중이면 방해하지 않음)
+      function paint() {
+        var near = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+        if (!d) { t.remove(); d = add("model", ""); }
+        d.innerHTML = md(acc); if (near) box.scrollTop = box.scrollHeight;
+      }
+      function finish(text) {
+        text = (text || "").trim() || FAIL;
+        if (broken && acc) text += "\n\n(답변이 중간에 끊겼어요. 이어서 궁금한 점은 1522-3501 또는 카카오톡으로 문의해 주세요.)";
+        acc = text; paint(); hist.push({ role: "model", text: text }); save(hist);
+      }
+      fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: hist, page: pageCtx(), stream: canStream }) })
+        .then(function (r) {
+          var ct = r.headers.get("content-type") || "";
+          if (ct.indexOf("text/event-stream") < 0 || !r.body || !r.body.getReader) return r.json().then(function (j) { finish(j.reply); });
+          var rd = r.body.getReader(), dec = new TextDecoder(), buf = "";
+          function pump() {
+            return rd.read().then(function (x) {
+              if (x.done) return;
+              buf += dec.decode(x.value, { stream: true }).replace(/\r/g, "");
+              var i;
+              while ((i = buf.indexOf("\n\n")) >= 0) {
+                var line = buf.slice(0, i); buf = buf.slice(i + 2);
+                if (line.indexOf("data:") !== 0) continue;
+                var e; try { e = JSON.parse(line.slice(5)); } catch (er) { continue; }
+                if (e.t) { acc += e.t; paint(); }
+                if (e.error) broken = !e.t;   // 서버가 FAIL 문구를 보낸 경우는 끊김 아님
+                if (e.done || e.error) { gotEnd = true; return; }   // 연결은 끊지 않음(서버가 저장 마치고 닫음)
+              }
+              return pump();
+            });
+          }
+          return pump().then(function () { if (!gotEnd && acc) broken = true; finish(acc); });
+        })
+        .catch(function () {
+          if (acc) { broken = true; finish(acc); return; }
+          t.remove(); add("model", "연결이 원활하지 않아요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.");
+        })
         .then(function () { busy = false; send.disabled = false; ta.focus(); });
     }
     btn.onclick = function () { p.classList.add("on"); btn.style.display = "none"; if (!box.childNodes.length) render(); setTimeout(function () { ta.focus(); }, 50); };

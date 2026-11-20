@@ -1,4 +1,29 @@
 {
-  "functions": { "api/cars.js": { "maxDuration": 30 }, "api/sitemap.js": { "maxDuration": 30 }, "api/chat.js": { "maxDuration": 60 } },
-  "rewrites": [ { "source": "/sitemap.xml", "destination": "/api/sitemap" } ]
+  "functions": {
+    "api/cars.js": {
+      "maxDuration": 30
+    },
+    "api/sitemap.js": {
+      "maxDuration": 30
+    },
+    "api/chat.js": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/api/qa-compact",
+      "destination": "/api/chat?qa=compact"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/qa-compact",
+      "schedule": "0 18 * * *"
+    }
+  ]
 }

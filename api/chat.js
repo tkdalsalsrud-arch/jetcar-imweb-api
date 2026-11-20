@@ -1,17 +1,24 @@
 // 제트카 AI 상담 챗봇 API — 답변 근거: 제트카 공식 홈페이지 https://www.jetcar.co.kr
-// POST /api/chat  { messages:[{role:'user'|'model', text}], page:{url,title,text} }  → { reply }
+// POST /api/chat  { messages:[{role:'user'|'model', text}], page:{url,title,text}, stream:true }
+//   stream:true  → text/event-stream  data:{"t":"글자"} … data:{"done":true}   (위젯 기본)
+//   stream 없음  → { reply }
 // GET  /api/chat?ping=1 → { ok, ready } (위젯 노출 판단) / ?kb=1 → 수집 현황
+// 상담 지식베이스(lib/qa.js): 답변마다 질문·답변 저장 → 비슷한 질문에 과거 답변을 참고로 넣음
+//   GET  /api/chat?qa=list&token=ADMIN_TOKEN[&unknown=1][&q=검색어]   목록
+//   POST /api/chat {admin:ADMIN_TOKEN, action:'edit', id, answer[, question]} / {admin, action:'delete', id}
+//   GET  /api/qa-compact → /api/chat?qa=compact  (Vercel Cron 매일 03시 KST, CRON_SECRET)
 // 읽는 자료 (1시간 캐시):
 //   ① 차량 LIST 엑셀  /excel_cars_new.php  (신차·중고차·화물차 전 차량, 개월별 보증금·렌트비)
 //   ② 목록 페이지 /sub0201(신차) /sub0301(중고) /sub0701(화물차) → 차량별 상세 링크 매칭
 //   ③ 자주하는질문 /bbs/faq.php?fm_id=1   ④ 서비스 소개 /jetcar/sub0103.php
 //   ⑤ 고객이 보고 있는 페이지 본문(위젯이 전송)
 // 질문과 관련된 차량만 상세 행으로 넣고(토큰 절약), 나머지는 차종 요약으로 제공
-// 환경변수: ANTHROPIC_API_KEY (Claude, 기본) / CLAUDE_MODEL (기본 claude-sonnet-5-5) / GEMINI_API_KEY·GEMINI_MODEL (예비) / CHAT_PROVIDER (claude|gemini 강제)
+// 환경변수: ANTHROPIC_API_KEY / CLAUDE_MODEL (기본 claude-sonnet-5-5) / CLAUDE_EFFORT (기본 low)
+//          BLOB_READ_WRITE_TOKEN (지식베이스) / ADMIN_TOKEN (관리) / CRON_SECRET (합치기)
 const zlib = require('zlib');
+const QA = require('../lib/qa');
 
 const SITE = 'https://www.jetcar.co.kr';
-const MODELS = [process.env.GEMINI_MODEL, 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.5-flash'].filter(Boolean);
 const ORIGINS = /^https:\/\/(jetcar1000\.imweb\.me|(www\.)?jetcar\.co\.kr|jetcar-imweb-api\.vercel\.app)$/;
 const UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', 'accept-language': 'ko-KR,ko;q=0.9' };
 const BOARDS = { 신차: 'sub0201', 중고차: 'sub0301', 화물차: 'sub0701' };
@@ -195,6 +202,7 @@ const SYS_STATIC = kb => `당신은 장기렌트 회사 (주)제트카(JETCAR)�
 7. 제트카와 무관한 질문은 정중히 장기렌트 상담으로 돌립니다. 이용 중 사고·파손·긴급출동 질문은 제트카 질문이므로 답합니다.
 8. 상담 연결: 전화 1522-3501 / 카카오톡 https://pf.kakao.com/_aQmWd
 9. 앞선 답변을 스스로 정정하는 것은 자료와 명백히 어긋날 때만 합니다. 이번 자료에 해당 내용이 안 보인다는 이유만으로 정정하지 않습니다.
+10. [과거 상담 기록]이 있으면 같은 취지로 일관되게 답합니다. 단, 금액·차량·재고·옵션은 과거 기록을 쓰지 말고 반드시 이번 [관련 차량 상세] 기준으로 답합니다. [담당자 확인] 표시 답변은 정책·절차 설명에서 홈페이지 자료보다 우선합니다. 표시 없는 과거 답변이 이번 자료와 다르면 이번 자료를 따릅니다. 과거 기록이 있다는 사실은 고객에게 말하지 않습니다.
 
 [제트카 공식 홈페이지 자료 — 실시간]
 [전체 차종 요약 — 차량 LIST 기준 ${kb.V.length}대] ${kb.summary}
@@ -205,11 +213,15 @@ ${kb.svc}
 [자주하는질문 전체 목록(제목) — 아래 '관련 높은 항목'에 답이 없으면 제목만 참고하고 상담 안내]
 ${kb.faq.map(x => '· ' + x.q).join('\n')}`;
 
-const SYS_DYNAMIC = (vehicles, faqs) => `[관련 차량 상세 — 개월별 보증금·월 렌트비]
+const ymd = t => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
+const SYS_DYNAMIC = (vehicles, faqs, past) => `[관련 차량 상세 — 개월별 보증금·월 렌트비]
 ${vehicles.map(vline).join('\n')}
 
 [자주하는질문 ${SITE}/bbs/faq.php?fm_id=1 — 이번 질문과 관련 높은 항목]
-${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}`;
+${(faqs || []).map(x => 'Q. ' + x.q + '\nA. ' + x.a).join('\n\n')}` + (past && past.length ? `
+
+[과거 상담 기록 — 이번 질문과 비슷했던 질문·답변 (규칙 10)]
+${past.map(p => `Q. ${p.q}\nA${p.staff ? '[담당자 확인]' : ''} (${ymd(p.ts)}). ${p.a}`).join('\n\n')}` : '');
 
 /* ── 사고·보험·긴급출동 안내 = 사고담당 카카오톡 챗봇(jetcar-chatbot1)의 고정 안내 카드 ──
    data/accident_kb.json은 scripts/build_accident_kb.mjs로 생성(사고담당 챗봇 내용이 바뀌면 다시 생성·배포)
@@ -226,10 +238,11 @@ ${ACC.rules.split('\n').filter(l => !/카카오톡 모바일|마크다운 금지
 
 ${ACC.cards.map(c => '■ ' + c.text).join('\n\n')}`;
 
-const SYSTEM = (kb, vehicles, faqs, acc) => SYS_STATIC(kb) + (acc ? '\n\n' + SYS_ACCIDENT() : '') + '\n\n' + SYS_DYNAMIC(vehicles, faqs);
+const SYSTEM = (kb, vehicles, faqs, acc, past) => SYS_STATIC(kb) + (acc ? '\n\n' + SYS_ACCIDENT() : '') + '\n\n' + SYS_DYNAMIC(vehicles, faqs, past);
 
-/* ── Claude (Anthropic Messages API) ── 기본 사용. 고정부에 prompt caching 적용 */
+/* ── Claude (Anthropic Messages API, 스트리밍) ── 고정부에 prompt caching 적용 */
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5-5';
+const FAIL = '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.';
 // Claude 규칙: 첫 메시지는 user, user/assistant 번갈아 → 앞쪽 assistant 제거, 같은 역할 연속은 합침
 function toClaude(msgs) {
   const out = [];
@@ -241,13 +254,14 @@ function toClaude(msgs) {
   }
   return out;
 }
-async function claude(key, sysStatic, sysDynamic, msgs, sysAcc) {
+// 요청만 보내고 응답 스트림을 그대로 돌려줌 (첫 응답 전 오류는 여기서 throw)
+async function claudeOpen(key, sysStatic, sysDynamic, msgs, sysAcc) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: CLAUDE_MODEL, max_tokens: 1500,
-      output_config: { effort: process.env.CLAUDE_EFFORT || 'low' },   // 내부 생각 최소화(응답 속도·비용). medium/high로 올릴 수 있음
+      model: CLAUDE_MODEL, max_tokens: 1500, stream: true,
+      output_config: { effort: process.env.CLAUDE_EFFORT || 'low' },   // 내부 생각 최소화(응답 속도·비용)
       system: [
         { type: 'text', text: sysStatic, cache_control: { type: 'ephemeral' } },
         ...(sysAcc ? [{ type: 'text', text: sysAcc, cache_control: { type: 'ephemeral' } }] : []),   // 사고 대화일 때만, 캐시
@@ -256,42 +270,21 @@ async function claude(key, sysStatic, sysDynamic, msgs, sysAcc) {
       messages: toClaude(msgs)
     })
   });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(r.status + ' ' + ((j.error && j.error.message) || ''));
-  const txt = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
-  LASTINFO = { provider: 'claude', model: j.model || CLAUDE_MODEL, stop: j.stop_reason, usage: j.usage };
-  if (!txt) throw new Error('empty ' + j.stop_reason);
-  return txt;
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(r.status + ' ' + ((j.error && j.error.message) || '')); }
+  return r;
 }
-
-// 내부 생각(thinking) 최소화: 응답 속도·출력 토큰 절약. 모델이 설정을 거부(400)하면 설정 없이 재시도
-const THINK = m => /^gemini-2\.5/.test(m) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
-let LASTINFO = {};
-async function gemini(key, system, contents) {
-  let last = '';
-  for (const model of MODELS) {
-    for (const think of [true, false]) {
-      const gc = { temperature: 0.3, maxOutputTokens: 1500 };
-      if (think && process.env.GEMINI_THINKING !== 'on') gc.thinkingConfig = THINK(model);
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: gc })
-      });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok) {
-        const c = (j.candidates || [])[0] || {};
-        const txt = ((c.content || {}).parts || []).filter(p => !p.thought).map(p => p.text || '').join('').trim();
-        LASTINFO = { provider: 'gemini', model, thinkingOff: !!gc.thinkingConfig, finish: c.finishReason, usage: j.usageMetadata };
-        if (txt) return txt;
-        last = 'empty ' + c.finishReason; break;
-      }
-      last = r.status + ' ' + ((j.error && j.error.message) || '');
-      if (r.status === 400 && think && gc.thinkingConfig) continue;   // 생각 설정 미지원 → 설정 없이 재시도
-      break;
+// Anthropic SSE → 이벤트 객체
+async function* sseEvents(body) {
+  const dec = new TextDecoder(); let buf = '';
+  for await (const chunk of body) {
+    buf += dec.decode(chunk, { stream: true }).replace(/\r/g, '');
+    let i;
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, i); buf = buf.slice(i + 2);
+      const data = block.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('');
+      if (data) { try { yield JSON.parse(data); } catch (e) { /* 무시 */ } }
     }
-    if (!/^(404|400)/.test(last)) break;                                 // 모델 없음일 때만 다음 모델
   }
-  throw new Error(last);
 }
 
 // 간단 속도 제한 (인스턴스 메모리 기준, IP당 10분 30회)
@@ -300,6 +293,10 @@ function limited(ip) {
   const now = Date.now(), arr = (HITS.get(ip) || []).filter(t => now - t < 600000);
   arr.push(now); HITS.set(ip, arr); return arr.length > 30;
 }
+// 관리자 확인 (ADMIN_TOKEN 미설정이면 관리 기능 꺼짐)
+const crypto = require('crypto');
+function same(a, b) { a = Buffer.from(String(a || '')); b = Buffer.from(String(b || '')); return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b); }
+const isAdmin = t => !!process.env.ADMIN_TOKEN && same(t, process.env.ADMIN_TOKEN);
 
 module.exports = async (req, res) => {
   const o = req.headers.origin || '';
@@ -309,48 +306,101 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'content-type');
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  // 사용할 AI: CHAT_PROVIDER(claude|gemini) 지정 없으면 Claude 키가 있으면 Claude, 없으면 Gemini
-  const PROVIDER = process.env.CHAT_PROVIDER || (process.env.ANTHROPIC_API_KEY ? 'claude' : 'gemini');
-  const key = PROVIDER === 'claude' ? process.env.ANTHROPIC_API_KEY : process.env.GEMINI_API_KEY;
+  const key = process.env.ANTHROPIC_API_KEY;
+  const q0 = req.query || {};
+
   if (req.method === 'GET') {
-    if (req.query && req.query.kb) {
-      const k = await buildKB(); const q = String(req.query.q || '');
+    // 지식베이스: 하루 1번 합치기 (Vercel Cron → Authorization: Bearer CRON_SECRET)
+    if (q0.qa === 'compact') {
+      const auth = String(req.headers.authorization || '');
+      if (!(process.env.CRON_SECRET && same(auth, 'Bearer ' + process.env.CRON_SECRET)) && !isAdmin(q0.token)) return res.status(401).json({ error: 'auth' });
+      try { return res.status(200).json({ ok: true, ...(await QA.compact()) }); }
+      catch (e) { console.error('qa compact', String(e)); return res.status(500).json({ error: String(e).slice(0, 200) }); }
+    }
+    // 지식베이스 목록 (관리자)
+    if (q0.qa) {
+      if (!isAdmin(q0.token)) return res.status(401).json({ error: 'auth' });
+      const items = await QA.all({ unknown: !!q0.unknown, q: q0.q });
+      return res.status(200).json({ ...QA.stats(), count: items.length, items: items.slice(0, +q0.limit || 300) });
+    }
+    if (q0.kb) {
+      const k = await buildKB(); const q = String(q0.q || '');
+      await QA.ready(3000);
       const vs = pickVehicles(k.V, [{ role: 'user', parts: [{ text: q }] }]);
       const fq = pickFaq(k.faq, [{ role: 'user', parts: [{ text: q }] }]);
-      const sys = SYSTEM(k, vs, fq);
-      return res.status(200).json({ ready: !!key, provider: PROVIDER, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqN: k.faq.length, faqPicked: fq.slice(0, 5).map(x => x.q), svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline) });
+      const past = q ? QA.similar(q) : [];
+      const sys = SYSTEM(k, vs, fq, false, past);
+      return res.status(200).json({ ready: !!key, provider: 'claude', model: CLAUDE_MODEL, vehicles: k.V.length, linked: k.V.filter(v => /\/sub0\d01\/\d+/.test(v.url)).length, listItems: k.listN, faqN: k.faq.length, faqPicked: fq.slice(0, 5).map(x => x.q), svcLen: k.svc.length, picked: vs.length, promptChars: sys.length, summary: k.summary.slice(0, 300), sample: vs.slice(0, 3).map(vline), qa: QA.stats(), qaPicked: past.map(p => ({ q: p.q, score: p.score, staff: p.staff })) });
     }
-    return res.status(200).json({ ok: true, ready: !!key, provider: PROVIDER });
+    return res.status(200).json({ ok: true, ready: !!key, provider: 'claude', qa: QA.stats().on });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'method' });
+
+  let body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}); } catch (e) { return res.status(400).json({ error: 'json' }); }
+
+  // 지식베이스 수정·삭제 (관리자)
+  if (body.admin != null) {
+    if (!isAdmin(body.admin)) return res.status(401).json({ error: 'auth' });
+    try {
+      if (body.action === 'edit' && body.id && body.answer) return res.status(200).json({ ok: await QA.edit(String(body.id), String(body.answer).slice(0, 3000), body.question ? String(body.question).slice(0, 300) : undefined) });
+      if (body.action === 'delete' && body.id) return res.status(200).json({ ok: await QA.remove(String(body.id)) });
+      return res.status(400).json({ error: 'action' });
+    } catch (e) { return res.status(500).json({ error: String(e).slice(0, 200) }); }
+  }
+
   if (!key) return res.status(503).json({ error: 'NO_KEY', reply: 'AI 상담 준비 중입니다. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
   const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'x';
   if (limited(ip)) return res.status(429).json({ reply: '문의가 많아 잠시 후 다시 시도해 주세요. 급하시면 전화 1522-3501로 연락 주세요.' });
+
+  const stream = !!body.stream;
+  let started = false, text = '';
+  const send = obj => res.write(`data: ${JSON.stringify(obj)}\n\n`);
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-12)
+    const raw = Array.isArray(body.messages) ? body.messages : [];
+    const msgs = raw.slice(-12)
       .map(m => ({ role: m.role === 'model' ? 'model' : 'user', parts: [{ text: String(m.text || '').slice(0, 1200) }] }))
       .filter(m => m.parts[0].text);
     if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return res.status(400).json({ error: 'no message' });
-    const kb = await buildKB();
+    const lastQ = msgs[msgs.length - 1].parts[0].text;
+    const isFirst = raw.filter(m => m.role !== 'model').length === 1;
+
+    const [kb] = await Promise.all([buildKB(), QA.ready(1500)]);
     const vehicles = pickVehicles(kb.V, msgs);
     const faqs = pickFaq(kb.faq, msgs);
     const acc = isAccident(msgs);
+    const past = QA.similar(lastQ, 3, 0.5);
     const pg = body.page || {};
     const pageCtx = pg.text ? `\n\n[고객이 보고 있는 페이지] ${String(pg.title || '').slice(0, 200)} (${String(pg.url || '').slice(0, 200)})\n${String(pg.text).slice(0, 5000)}` : '';
-    let reply, fallback;
-    if (PROVIDER === 'claude') {
-      // Claude 실패 시 Gemini 키가 있으면 자동 대체 → 고객에게 오류 화면 최소화
-      try { reply = await claude(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs) + pageCtx, msgs, acc ? SYS_ACCIDENT() : ''); }
-      catch (e) {
-        if (!process.env.GEMINI_API_KEY) throw e;
-        console.error('claude fail → gemini', String(e)); fallback = String(e).slice(0, 300);
-        reply = await gemini(process.env.GEMINI_API_KEY, SYSTEM(kb, vehicles, faqs, acc) + pageCtx, msgs);
-      }
-    } else reply = await gemini(key, SYSTEM(kb, vehicles, faqs, acc) + pageCtx, msgs);
-    res.status(200).json(body.debug ? { reply, info: LASTINFO, fallback, accident: acc } : { reply });
+
+    const r = await claudeOpen(key, SYS_STATIC(kb), SYS_DYNAMIC(vehicles, faqs, past) + pageCtx, msgs, acc ? SYS_ACCIDENT() : '');
+    if (stream) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+      if (res.flushHeaders) res.flushHeaders();
+      started = true;
+    }
+    const info = { provider: 'claude', model: CLAUDE_MODEL, usage: {}, accident: acc, past: past.map(p => ({ id: p.id, score: p.score, staff: p.staff })) };
+    for await (const ev of sseEvents(r.body)) {
+      if (ev.type === 'message_start' && ev.message) { info.model = ev.message.model || info.model; Object.assign(info.usage, ev.message.usage || {}); }
+      else if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') { text += ev.delta.text; if (stream) send({ t: ev.delta.text }); }
+      else if (ev.type === 'message_delta') { info.stop = ev.delta && ev.delta.stop_reason; Object.assign(info.usage, ev.usage || {}); }
+      else if (ev.type === 'error') throw new Error('stream ' + ((ev.error && ev.error.message) || ''));
+    }
+    const reply = text.trim();
+    if (!reply) throw new Error('empty ' + info.stop);
+
+    // 답변 끝 → 화면 먼저 마무리, 그다음 지식베이스 저장 (저장 실패해도 고객 화면엔 영향 없음)
+    if (stream) send(body.debug ? { done: true, info } : { done: true });
+    let saved;
+    try { saved = await QA.save({ q: lastQ, a: reply, isFirst, acc, page: pg.url }); } catch (e) { console.error('qa save', String(e)); saved = { saved: false, why: 'error' }; }
+    if (stream) return res.end();
+    return res.status(200).json(body.debug ? { reply, info, saved } : { reply });
   } catch (e) {
     console.error('chat error', String(e));
-    res.status(502).json({ error: 'AI', detail: req.body && req.body.debug ? String(e).slice(0, 300) : undefined, reply: '지금은 AI 답변이 어려워요. 전화 1522-3501 또는 카카오톡으로 문의해 주세요.' });
+    if (started) { send(text ? { error: true } : { error: true, t: FAIL }); return res.end(); }
+    return res.status(502).json({ error: 'AI', detail: body.debug ? String(e).slice(0, 300) : undefined, reply: FAIL });
   }
 };
